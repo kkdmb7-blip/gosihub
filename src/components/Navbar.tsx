@@ -1,11 +1,35 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function logout() {
+    await supabase.auth.signOut()
+    setUser(null)
+    window.location.href = '/'
+  }
+
+  const navLinks = [
+    { href: '/', label: '방 찾기' },
+    { href: '/register', label: '방 등록' },
+    { href: '/mypage', label: '내 매물' },
+  ]
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
@@ -14,45 +38,50 @@ export default function Navbar() {
           고시허브
         </Link>
 
-        {/* 데스크탑 메뉴 */}
         <div className="hidden md:flex items-center gap-6">
-          <Link href="/" className={`text-sm font-medium ${pathname === '/' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-            방 찾기
-          </Link>
-          <Link href="/register" className={`text-sm font-medium ${pathname === '/register' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-            방 등록
-          </Link>
-          <Link href="/mypage" className={`text-sm font-medium ${pathname === '/mypage' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-            마이페이지
-          </Link>
-          <button
-            onClick={() => window.location.href = '/api/auth/kakao'}
-            className="bg-yellow-400 text-yellow-900 font-bold text-sm px-4 py-2 rounded-full hover:bg-yellow-300 transition-colors"
-          >
-            카카오 로그인
-          </button>
+          {navLinks.map(l => (
+            <Link key={l.href} href={l.href}
+              className={`text-sm font-medium ${pathname === l.href ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
+              {l.label}
+            </Link>
+          ))}
+          {user ? (
+            <button onClick={logout}
+              className="text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
+              로그아웃
+            </button>
+          ) : (
+            <button onClick={() => window.location.href = '/api/auth/kakao'}
+              className="bg-yellow-400 text-yellow-900 font-bold text-sm px-4 py-2 rounded-full hover:bg-yellow-300 transition-colors">
+              카카오 로그인
+            </button>
+          )}
         </div>
 
-        {/* 모바일 햄버거 */}
         <button className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)}>
-          <div className="w-5 h-0.5 bg-gray-600 mb-1"></div>
-          <div className="w-5 h-0.5 bg-gray-600 mb-1"></div>
-          <div className="w-5 h-0.5 bg-gray-600"></div>
+          <div className="w-5 h-0.5 bg-gray-600 mb-1" />
+          <div className="w-5 h-0.5 bg-gray-600 mb-1" />
+          <div className="w-5 h-0.5 bg-gray-600" />
         </button>
       </div>
 
-      {/* 모바일 드롭다운 */}
       {menuOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 px-4 py-3 flex flex-col gap-3">
-          <Link href="/" className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>방 찾기</Link>
-          <Link href="/register" className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>방 등록</Link>
-          <Link href="/mypage" className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>마이페이지</Link>
-          <button
-            onClick={() => window.location.href = '/api/auth/kakao'}
-            className="bg-yellow-400 text-yellow-900 font-bold text-sm px-4 py-2 rounded-full w-full"
-          >
-            카카오 로그인
-          </button>
+          {navLinks.map(l => (
+            <Link key={l.href} href={l.href} className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>
+              {l.label}
+            </Link>
+          ))}
+          {user ? (
+            <button onClick={logout} className="text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-full">
+              로그아웃
+            </button>
+          ) : (
+            <button onClick={() => window.location.href = '/api/auth/kakao'}
+              className="bg-yellow-400 text-yellow-900 font-bold text-sm px-4 py-2 rounded-full w-full">
+              카카오 로그인
+            </button>
+          )}
         </div>
       )}
     </nav>
