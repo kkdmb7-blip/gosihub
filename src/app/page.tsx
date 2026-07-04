@@ -92,9 +92,11 @@ export default function HomePage() {
   }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword])
 
   useEffect(() => {
-    mapRoomsRef.current = nearbyMode ? nearbyRooms : mapRooms
+    const rooms = nearbyMode ? nearbyRooms : mapRooms
+    mapRoomsRef.current = rooms
+    setVisibleRooms(rooms)
     if (kakaoMap.current) {
-      renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
+      renderMarkers(rooms)
       filterByBounds()
     }
   }, [mapRooms, nearbyRooms, nearbyMode])
@@ -249,6 +251,7 @@ export default function HomePage() {
     kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
     window.kakao.maps.event.addListener(kakaoMap.current, 'bounds_changed', filterByBounds)
     renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
+    filterByBounds()
   }
 
   function initMap() {
