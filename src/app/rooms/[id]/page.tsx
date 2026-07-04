@@ -115,14 +115,15 @@ export default function RoomDetailPage() {
 
   function doShare(url: string) {
     if (!room) return
+    const content: any = {
+      title: room.title,
+      description: `${room.address} | 월 ${room.price}만원`,
+      link: { mobileWebUrl: url, webUrl: url },
+    }
+    if (room.photos?.[0]) content.imageUrl = room.photos[0]
     window.Kakao.Share.sendDefault({
       objectType: 'feed',
-      content: {
-        title: room.title,
-        description: `${room.address} | 월 ${room.price}만원`,
-        imageUrl: room.photos?.[0] || 'https://gosihub.vercel.app/icon.png',
-        link: { mobileWebUrl: url, webUrl: url },
-      },
+      content,
       buttons: [{ title: '방 보러가기', link: { mobileWebUrl: url, webUrl: url } }],
     })
   }

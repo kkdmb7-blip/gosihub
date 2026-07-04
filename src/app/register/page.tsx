@@ -69,14 +69,11 @@ export default function RegisterPage() {
   }
 
   function openAddressSearch() {
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.onload = () => {
+    function openPostcode() {
       new window.daum.Postcode({
         oncomplete: async (data: any) => {
           const addr = data.roadAddress || data.jibunAddress
           set('address', addr)
-          // 카카오 geocoding으로 좌표 변환
           try {
             const res = await fetch(
               `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
@@ -91,7 +88,14 @@ export default function RegisterPage() {
         }
       }).open()
     }
-    document.head.appendChild(script)
+    if (document.querySelector('script[src*="postcode"]')) {
+      openPostcode()
+    } else {
+      const script = document.createElement('script')
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+      script.onload = openPostcode
+      document.head.appendChild(script)
+    }
   }
 
   function validateStep(n: number): string | null {

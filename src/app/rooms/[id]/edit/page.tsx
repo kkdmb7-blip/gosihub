@@ -114,34 +114,37 @@ export default function EditRoomPage() {
     setNewPhotoPreviews(files.map(f => URL.createObjectURL(f)))
   }
 
+  async function geocodeAddress(addr: string) {
+    try {
+      const res = await fetch(
+        `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
+        { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}` } }
+      )
+      const json = await res.json()
+      if (json.documents?.[0]) {
+        set('lat', parseFloat(json.documents[0].y))
+        set('lng', parseFloat(json.documents[0].x))
+      }
+    } catch (e) {}
+  }
+
   function openAddressSearch() {
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.onload = () => {
+    function openPostcode() {
       new window.daum.Postcode({
         oncomplete: async (data: any) => {
           const addr = data.roadAddress || data.jibunAddress
           set('address', addr)
-          try {
-            const res = await fetch(
-              `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
-              { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}` } }
-            )
-            const json = await res.json()
-            if (json.documents?.[0]) {
-              set('lat', parseFloat(json.documents[0].y))
-              set('lng', parseFloat(json.documents[0].x))
-            }
-          } catch (e) {}
+          await geocodeAddress(addr)
         }
       }).open()
     }
-    if (!document.querySelector('script[src*="postcode"]')) {
-      document.head.appendChild(script)
+    if (document.querySelector('script[src*="postcode"]')) {
+      openPostcode()
     } else {
-      new window.daum.Postcode({
-        oncomplete: (data: any) => set('address', data.roadAddress || data.jibunAddress)
-      }).open()
+      const script = document.createElement('script')
+      script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+      script.onload = openPostcode
+      document.head.appendChild(script)
     }
   }
 
