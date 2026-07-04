@@ -5,7 +5,7 @@ import RoomCard from '@/components/RoomCard'
 
 declare global { interface Window { kakao: any } }
 
-const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
+const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
 const PRICE_OPTIONS = [
   { label: '전체', max: 9999, min: 0 },
