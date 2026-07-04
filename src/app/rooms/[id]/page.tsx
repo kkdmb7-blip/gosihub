@@ -171,10 +171,12 @@ export default function RoomDetailPage() {
             연락처 보기
           </button>
         )}
-        <a href={`https://open.kakao.com/`} target="_blank"
-          className="bg-yellow-400 text-yellow-900 font-bold py-3.5 px-5 rounded-xl text-sm whitespace-nowrap">
-          카카오 문의
-        </a>
+        {(room as any).kakao_open_chat && (
+          <a href={(room as any).kakao_open_chat} target="_blank"
+            className="bg-yellow-400 text-yellow-900 font-bold py-3.5 px-5 rounded-xl text-sm whitespace-nowrap">
+            카카오 문의
+          </a>
+        )}
       </div>
     </div>
   )

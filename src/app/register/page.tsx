@@ -134,6 +134,7 @@ export default function RegisterPage() {
       move_in_date: form.move_in_date || null,
       owner_name: form.owner_name,
       owner_phone: form.owner_phone,
+      kakao_open_chat: (form as any).kakao_open_chat || null,
       amenities: form.amenities,
       meals: form.amenities.includes('meals'),
       internet: form.amenities.includes('internet'),
@@ -312,6 +313,11 @@ export default function RegisterPage() {
           <div>
             <label className={labelCls}>연락처 *</label>
             <input className={inputCls} type="tel" placeholder="010-0000-0000" value={form.owner_phone} onChange={e => set('owner_phone', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>카카오 오픈채팅 링크 <span className="text-gray-400 font-normal">(선택)</span></label>
+            <input className={inputCls} placeholder="https://open.kakao.com/o/..." value={(form as any).kakao_open_chat || ''} onChange={e => set('kakao_open_chat', e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">카카오톡 → 오픈채팅 → 링크 복사</p>
           </div>
 
           {/* 등록 내용 요약 */}
