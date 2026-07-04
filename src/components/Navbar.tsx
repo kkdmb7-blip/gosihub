@@ -25,7 +25,7 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
-  const ADMIN_ID = '99f9f77a-2f2a-4055-ab44-421d1c070341'
+  const ADMIN_ID = '9d38acc4-d314-4e16-8316-9520c9e335d3'
   const isAdmin = user?.id === ADMIN_ID
 
   const navLinks = [
