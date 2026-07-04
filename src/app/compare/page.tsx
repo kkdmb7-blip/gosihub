@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase, Room } from '@/lib/supabase'
@@ -20,7 +20,7 @@ function Cell({ value, best }: { value: string | number | null; best?: boolean }
   )
 }
 
-export default function ComparePage() {
+function CompareContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [rooms, setRooms] = useState<Room[]>([])
@@ -178,5 +178,13 @@ export default function ComparePage() {
 
       <p className="text-xs text-gray-400 text-center mt-4">파란색 강조 = 이 항목에서 가장 유리한 매물</p>
     </div>
+  )
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={<div className="text-center py-24 text-gray-400 text-sm">로딩 중...</div>}>
+      <CompareContent />
+    </Suspense>
   )
 }

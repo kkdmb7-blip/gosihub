@@ -52,7 +52,7 @@ export default function MyPage() {
   async function fetchPayments(userId?: string) {
     const uid = userId || user?.id
     if (!uid) return
-    const { data } = await supabase.from('rent_payments').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20)
+    const { data } = await supabase.from('rent_payments').select('*').eq('user_id', uid).order('id', { ascending: false }).limit(20)
     setPayments(data || [])
   }
 
@@ -111,13 +111,14 @@ export default function MyPage() {
 
   async function saveTenantRoom() {
     if (!tenantForm.room_id.trim() || !tenantForm.move_in_date) return
-    await supabase.from('tenant_rooms').upsert({
+    const { error } = await supabase.from('tenant_rooms').upsert({
       user_id: user.id,
       room_id: tenantForm.room_id.trim(),
       move_in_date: tenantForm.move_in_date,
       contract_months: tenantForm.contract_months,
       note: tenantForm.note || null,
     }, { onConflict: 'user_id,room_id' })
+    if (error) { alert('등록 실패: 방 ID를 다시 확인해주세요'); return }
     setShowTenantForm(false)
     setTenantForm({ room_id: '', move_in_date: '', contract_months: 6, note: '' })
     fetchTenantRooms(user.id)
@@ -460,8 +461,6 @@ export default function MyPage() {
               })}
             </div>
           )}
-        </>
-      )}
 
           {/* 결제 내역 */}
           {payments.length > 0 && (
@@ -472,7 +471,7 @@ export default function MyPage() {
                   <div key={p.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3">
                     <div>
                       <p className="text-sm font-semibold text-gray-800">{(p.amount / 10000).toLocaleString()}만원</p>
-                      <p className="text-xs text-gray-400">{(p.paid_at || p.created_at)?.slice(0, 10)}</p>
+                      <p className="text-xs text-gray-400">{p.paid_at?.slice(0, 10) || '결제 대기'}</p>
                     </div>
                     <span className={`text-xs font-bold px-2 py-1 rounded-full ${
                       p.status === 'completed' ? 'bg-green-50 text-green-700' :
