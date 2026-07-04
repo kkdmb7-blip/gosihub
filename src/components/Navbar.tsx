@@ -25,10 +25,14 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
+  const ADMIN_ID = '99f9f77a-2f2a-4055-ab44-421d1c070341'
+  const isAdmin = user?.id === ADMIN_ID
+
   const navLinks = [
     { href: '/', label: '방 찾기' },
     { href: '/register', label: '방 등록' },
     { href: '/mypage', label: '내 매물' },
+    ...(isAdmin ? [{ href: '/admin', label: '관리자' }] : []),
   ]
 
   return (
