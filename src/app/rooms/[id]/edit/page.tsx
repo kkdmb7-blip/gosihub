@@ -5,6 +5,7 @@ import { supabase, RoomType, GenderType } from '@/lib/supabase'
 
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
+const MIN_CONTRACTS = ['1개월', '3개월', '6개월', '1년']
 const AMENITIES = [
   { key: 'wifi', label: 'Wi-Fi' },
   { key: 'meals', label: '식사제공' },
@@ -48,6 +49,9 @@ export default function EditRoomPage() {
     owner_name: '',
     owner_phone: '',
     kakao_open_chat: '',
+    management_fee: '',
+    min_contract: '',
+    pets_allowed: false,
     amenities: [] as string[],
     existingPhotos: [] as string[],
   })
@@ -82,6 +86,9 @@ export default function EditRoomPage() {
       owner_name: room.owner_name || '',
       owner_phone: room.owner_phone || '',
       kakao_open_chat: (room as any).kakao_open_chat || '',
+      management_fee: room.management_fee?.toString() || '0',
+      min_contract: (room as any).min_contract || '',
+      pets_allowed: (room as any).pets_allowed || false,
       amenities: room.amenities || [],
       existingPhotos: room.photos || [],
     })
@@ -186,6 +193,9 @@ export default function EditRoomPage() {
         floor: form.floor ? parseInt(form.floor) : null,
         total_floors: form.total_floors ? parseInt(form.total_floors) : null,
         move_in_date: form.move_in_date || null,
+        management_fee: parseInt((form as any).management_fee) || 0,
+        min_contract: (form as any).min_contract || null,
+        pets_allowed: (form as any).pets_allowed || false,
         owner_name: form.owner_name,
         owner_phone: form.owner_phone,
         kakao_open_chat: form.kakao_open_chat || null,
@@ -268,6 +278,20 @@ export default function EditRoomPage() {
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>관리비 (만원)</label>
+            <input className={inputCls} type="number" placeholder="0" value={(form as any).management_fee} onChange={e => set('management_fee', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>최소계약기간</label>
+            <select className={inputCls} value={(form as any).min_contract} onChange={e => set('min_contract', e.target.value)}>
+              <option value="">선택 안 함</option>
+              {MIN_CONTRACTS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+
         {/* 입주일 */}
         <div>
           <label className={labelCls}>입주 가능일</label>
@@ -314,6 +338,15 @@ export default function EditRoomPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 반려동물 */}
+        <div>
+          <label className={labelCls}>반려동물</label>
+          <button type="button" onClick={() => set('pets_allowed', !(form as any).pets_allowed)}
+            className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${(form as any).pets_allowed ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'}`}>
+            {(form as any).pets_allowed ? '반려동물 가능' : '반려동물 불가'}
+          </button>
         </div>
 
         {/* 설명 */}

@@ -28,6 +28,11 @@ export default function RoomDetailPage() {
   const [showClaimModal, setShowClaimModal] = useState(false)
   const [claimPhone, setClaimPhone] = useState('')
   const [claimError, setClaimError] = useState('')
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [reportNote, setReportNote] = useState('')
+  const [reportLoading, setReportLoading] = useState(false)
+  const [reportDone, setReportDone] = useState(false)
   const mapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -55,6 +60,20 @@ export default function RoomDetailPage() {
   async function checkFavorite(userId: string, roomId: string) {
     const { data } = await supabase.from('favorites').select('id').eq('user_id', userId).eq('room_id', roomId).single()
     setFavorited(!!data)
+  }
+
+  async function reportRoom() {
+    if (!reportReason) return
+    setReportLoading(true)
+    await supabase.from('room_reports').insert({
+      room_id: id as string,
+      user_id: user?.id || null,
+      reason: reportReason,
+      note: reportNote || null,
+    })
+    setReportLoading(false)
+    setReportDone(true)
+    setShowReportModal(false)
   }
 
   async function claimRoom() {
@@ -247,15 +266,24 @@ export default function RoomDetailPage() {
           </div>
         )}
 
-        <div className="flex items-baseline gap-2 mb-4">
+        <div className="flex items-baseline gap-2 mb-2 flex-wrap">
           {room.deposit > 0 && (
             <span className="text-sm text-gray-500">보증금 {room.deposit.toLocaleString()}만원</span>
           )}
           <span className="text-2xl font-bold text-gray-900">{room.price.toLocaleString()}만원</span>
           <span className="text-gray-400 text-sm">/월</span>
+          {room.management_fee > 0 && (
+            <span className="text-sm text-gray-500">+ 관리비 {room.management_fee.toLocaleString()}만원</span>
+          )}
         </div>
+        {room.management_fee > 0 && (
+          <div className="bg-blue-50 rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
+            <span className="text-xs text-blue-600">월 총 부담액</span>
+            <span className="text-sm font-bold text-blue-700">{(room.price + room.management_fee).toLocaleString()}만원</span>
+          </div>
+        )}
 
-        <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+        <div className="grid grid-cols-3 gap-2 mb-3 text-center">
           {[
             { label: '성별', value: room.gender },
             { label: '면적', value: room.area ? `${room.area}평` : '미제공' },
@@ -267,6 +295,16 @@ export default function RoomDetailPage() {
             </div>
           ))}
         </div>
+        {((room as any).min_contract || (room as any).pets_allowed) && (
+          <div className="flex gap-2 mb-3">
+            {(room as any).min_contract && (
+              <span className="text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100 font-medium">최소계약 {(room as any).min_contract}</span>
+            )}
+            {(room as any).pets_allowed && (
+              <span className="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-100 font-medium">반려동물 가능</span>
+            )}
+          </div>
+        )}
 
         {room.amenities?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
@@ -300,6 +338,20 @@ export default function RoomDetailPage() {
           <h2 className="text-sm font-bold text-gray-700 mb-3">위치</h2>
           <div ref={mapRef} className="w-full rounded-xl overflow-hidden" style={{ height: 200 }} />
           <p className="text-xs text-gray-400 mt-2">{room.address}</p>
+        </div>
+      )}
+
+      {/* 신고하기 */}
+      {!reportDone ? (
+        <div className="flex justify-end mb-3">
+          <button onClick={() => { setShowReportModal(true); setReportReason(''); setReportNote('') }}
+            className="text-xs text-gray-400 border border-gray-200 px-3 py-1.5 rounded-full hover:text-red-400 hover:border-red-200 transition-all">
+            허위매물 신고
+          </button>
+        </div>
+      ) : (
+        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 mb-3 text-center">
+          <p className="text-xs text-gray-500">신고해주셔서 감사합니다. 검토 후 조치할게요.</p>
         </div>
       )}
 
@@ -360,6 +412,38 @@ export default function RoomDetailPage() {
               <button onClick={claimRoom} disabled={claiming}
                 className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50">
                 {claiming ? '확인 중...' : '인증 후 등록'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 신고 모달 */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowReportModal(false)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <h3 className="text-base font-bold text-gray-900 mb-1">매물 신고</h3>
+            <p className="text-sm text-gray-500 mb-4">허위 매물이나 잘못된 정보를 신고해주세요</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {['폐업', '전화불통', '사진과다름', '가격다름', '기타'].map(r => (
+                <button key={r} onClick={() => setReportReason(r)}
+                  className={`px-3 py-2 rounded-xl border text-sm font-medium transition-all ${reportReason === r ? 'bg-red-500 text-white border-red-500' : 'bg-white text-gray-600 border-gray-200'}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea value={reportNote} onChange={e => setReportNote(e.target.value)} rows={2}
+              placeholder="추가 내용 (선택)"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-300 resize-none mb-3" />
+            <div className="flex gap-2">
+              <button onClick={() => setShowReportModal(false)}
+                className="flex-1 border border-gray-200 text-gray-500 font-medium py-3 rounded-xl text-sm">
+                취소
+              </button>
+              <button onClick={reportRoom} disabled={!reportReason || reportLoading}
+                className="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-40">
+                {reportLoading ? '신고 중...' : '신고하기'}
               </button>
             </div>
           </div>

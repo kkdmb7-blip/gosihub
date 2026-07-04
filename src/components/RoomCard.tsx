@@ -68,12 +68,15 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
           <p className="text-xs text-gray-500 mb-2 truncate">{room.address}</p>
 
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline gap-1 flex-wrap">
               {room.deposit > 0 && (
                 <span className="text-xs text-gray-500">보증금 {room.deposit}만</span>
               )}
               <span className="font-bold text-gray-900">{room.price}만원</span>
               <span className="text-xs text-gray-400">/월</span>
+              {room.management_fee > 0 && (
+                <span className="text-xs text-gray-400">+관리비 {room.management_fee}만</span>
+              )}
             </div>
             {(room as any).avg_rating > 0 && (
               <span className="text-xs text-amber-500 font-medium">
@@ -88,7 +91,13 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
             {room.meals && (
               <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-100">식사제공</span>
             )}
-            {room.amenities?.slice(0, 2).map(a => (
+            {room.min_contract && (
+              <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">최소 {room.min_contract}</span>
+            )}
+            {room.pets_allowed && (
+              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-100">반려동물 가능</span>
+            )}
+            {!room.min_contract && !room.pets_allowed && room.amenities?.slice(0, 2).map(a => (
               <span key={a} className="text-xs bg-gray-50 text-gray-600 px-2 py-0.5 rounded-full border border-gray-100">
                 {AMENITY_ICONS[a] || a}
               </span>

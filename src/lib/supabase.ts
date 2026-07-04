@@ -52,6 +52,9 @@ export interface Room {
   total_floors?: number
   move_in_date?: string
   has_vacancy: boolean
+  management_fee: number
+  min_contract?: string
+  pets_allowed: boolean
 }
 
 export interface User {
