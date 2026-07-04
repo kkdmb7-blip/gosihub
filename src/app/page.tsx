@@ -1,10 +1,11 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { supabase, Room, RoomType, GenderType } from '@/lib/supabase'
 import RoomCard from '@/components/RoomCard'
 
 declare global { interface Window { kakao: any } }
 
+const PAGE_SIZE = 60
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
 const PRICE_OPTIONS = [
@@ -25,6 +26,7 @@ const REGIONS = [
   { label: '광주', value: '광주' },
   { label: '기타', value: '기타' },
 ]
+const MAIN_CITIES = ['서울', '경기', '인천', '부산', '대구', '대전', '광주']
 
 export default function HomePage() {
   const mapRef = useRef<HTMLDivElement>(null)
@@ -32,47 +34,93 @@ export default function HomePage() {
   const markersRef = useRef<any[]>([])
 
   const [rooms, setRooms] = useState<Room[]>([])
-  const [filtered, setFiltered] = useState<Room[]>([])
+  const [total, setTotal] = useState(0)
+  const [currentPage, setCurrentPage] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [view, setView] = useState<'list' | 'map'>('list')
+
   const [keyword, setKeyword] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<RoomType[]>([])
   const [selectedGender, setSelectedGender] = useState<GenderType | ''>('')
   const [priceIdx, setPriceIdx] = useState(0)
   const [mealsOnly, setMealsOnly] = useState(false)
   const [selectedRegion, setSelectedRegion] = useState('')
+
   const [locating, setLocating] = useState(false)
   const [nearbyMode, setNearbyMode] = useState(false)
+  const [nearbyRooms, setNearbyRooms] = useState<Room[]>([])
   const [userPos, setUserPos] = useState<{lat: number, lng: number} | null>(null)
+
   const [user, setUser] = useState<any>(null)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
+  // 필터 변경시 첫 페이지부터 다시 로드
   useEffect(() => {
-    fetchRooms()
+    if (nearbyMode) return
+    setCurrentPage(0)
+    setRooms([])
+    fetchRooms(0, false)
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword, nearbyMode])
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user)
-        loadFavorites(session.user.id)
-      }
+      if (session?.user) { setUser(session.user); loadFavorites(session.user.id) }
     })
   }, [])
-  useEffect(() => { applyFilter() }, [rooms, keyword, selectedTypes, selectedGender, priceIdx, mealsOnly, selectedRegion, nearbyMode, userPos])
-  useEffect(() => {
-    if (view === 'map') {
-      const timer = setTimeout(initMap, 100)
-      return () => clearTimeout(timer)
-    } else {
-      kakaoMap.current = null
-      markersRef.current = []
-    }
-  }, [view])
-  useEffect(() => { if (kakaoMap.current) renderMarkers(filtered) }, [filtered])
 
-  async function fetchRooms() {
-    setLoading(true)
-    const { data } = await supabase.from('rooms').select('*').eq('is_active', true).order('last_confirmed_at', { ascending: false })
-    setRooms(data || [])
-    setLoading(false)
+  useEffect(() => {
+    if (view === 'map') { const t = setTimeout(initMap, 100); return () => clearTimeout(t) }
+    else { kakaoMap.current = null; markersRef.current = [] }
+  }, [view])
+
+  useEffect(() => {
+    if (kakaoMap.current) renderMarkers(nearbyMode ? nearbyRooms : rooms)
+  }, [rooms, nearbyRooms])
+
+  function buildQuery(page: number) {
+    let q: any = supabase.from('rooms')
+      .select('*', { count: 'exact' })
+      .eq('is_active', true)
+      .order('last_confirmed_at', { ascending: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+    if (selectedRegion === '기타') {
+      for (const c of MAIN_CITIES) q = q.not('address', 'ilike', `%${c}%`)
+    } else if (selectedRegion) {
+      q = q.ilike('address', `%${selectedRegion}%`)
+    }
+    if (selectedTypes.length > 0) q = q.in('type', selectedTypes)
+    if (selectedGender) q = q.eq('gender', selectedGender)
+    const po = PRICE_OPTIONS[priceIdx]
+    if (po.max < 9999) q = q.lte('price', po.max)
+    if (po.min > 0) q = q.gte('price', po.min)
+    if (mealsOnly) q = q.eq('meals', true)
+    if (keyword.trim()) q = q.or(`title.ilike.%${keyword.trim()}%,address.ilike.%${keyword.trim()}%`)
+
+    return q
+  }
+
+  async function fetchRooms(page: number, append: boolean) {
+    if (!append) setLoading(true)
+    else setLoadingMore(true)
+
+    const { data, count } = await buildQuery(page)
+
+    if (append) {
+      setRooms(prev => [...prev, ...(data || [])])
+      setLoadingMore(false)
+    } else {
+      setRooms(data || [])
+      setLoading(false)
+    }
+    setTotal(count || 0)
+  }
+
+  async function loadMore() {
+    const next = currentPage + 1
+    setCurrentPage(next)
+    await fetchRooms(next, true)
   }
 
   async function loadFavorites(userId: string) {
@@ -91,34 +139,6 @@ export default function HomePage() {
     }
   }
 
-  function applyFilter() {
-    let result = [...rooms]
-    if (keyword.trim()) {
-      const kw = keyword.trim().toLowerCase()
-      result = result.filter(r => r.title.toLowerCase().includes(kw) || r.address.toLowerCase().includes(kw))
-    }
-    if (selectedRegion) {
-      if (selectedRegion === '기타') {
-        result = result.filter(r => !['서울', '경기', '인천', '부산', '대구', '대전', '광주'].some(c => r.address.includes(c)))
-      } else {
-        result = result.filter(r => r.address.includes(selectedRegion))
-      }
-    }
-    if (selectedTypes.length > 0) result = result.filter(r => selectedTypes.includes(r.type))
-    if (selectedGender) result = result.filter(r => r.gender === selectedGender)
-    const po = PRICE_OPTIONS[priceIdx]
-    result = result.filter(r => r.price <= po.max && r.price >= po.min)
-    if (mealsOnly) result = result.filter(r => r.meals)
-    if (nearbyMode && userPos) {
-      result = result
-        .filter(r => r.lat && r.lng)
-        .map(r => ({ ...r, _dist: Math.sqrt(Math.pow(r.lat - userPos.lat, 2) + Math.pow(r.lng - userPos.lng, 2)) }))
-        .sort((a: any, b: any) => a._dist - b._dist)
-        .slice(0, 50) as Room[]
-    }
-    setFiltered(result)
-  }
-
   function toggleType(t: RoomType) {
     setSelectedTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
   }
@@ -126,12 +146,23 @@ export default function HomePage() {
   async function findNearby() {
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      pos => {
-        setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      async pos => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude
+        setUserPos({ lat, lng })
         setNearbyMode(true)
         setLocating(false)
+
+        // 반경 내 전체 좌표 있는 방 가져와서 거리순 정렬
+        const { data } = await supabase.from('rooms').select('*').eq('is_active', true).not('lat', 'is', null).not('lng', 'is', null).limit(9999)
+        const sorted = (data || [])
+          .map((r: any) => ({ ...r, _dist: Math.sqrt(Math.pow(r.lat - lat, 2) + Math.pow(r.lng - lng, 2)) }))
+          .sort((a: any, b: any) => a._dist - b._dist)
+          .slice(0, 50)
+        setNearbyRooms(sorted as Room[])
+        setTotal(sorted.length)
+
         if (view === 'map' && kakaoMap.current) {
-          const center = new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude)
+          const center = new window.kakao.maps.LatLng(lat, lng)
           kakaoMap.current.setCenter(center)
           kakaoMap.current.setLevel(5)
         }
@@ -140,13 +171,17 @@ export default function HomePage() {
     )
   }
 
-  function clearNearby() { setNearbyMode(false); setUserPos(null) }
+  function clearNearby() {
+    setNearbyMode(false)
+    setNearbyRooms([])
+    setUserPos(null)
+  }
 
   function createMap() {
     if (!mapRef.current || kakaoMap.current) return
     const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
     kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
-    renderMarkers(filtered)
+    renderMarkers(nearbyMode ? nearbyRooms : rooms)
   }
 
   function initMap() {
@@ -175,7 +210,9 @@ export default function HomePage() {
       })
   }
 
+  const displayRooms = nearbyMode ? nearbyRooms : rooms
   const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0)
+  const hasMore = !nearbyMode && rooms.length < total
 
   return (
     <div className="min-h-screen" style={{ background: '#f8f7f4' }}>
@@ -190,13 +227,10 @@ export default function HomePage() {
           ))}
           <button onClick={nearbyMode ? clearNearby : findNearby} disabled={locating}
             className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${nearbyMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
-            {locating ? (
-              <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-              </svg>
-            )}
+            {locating
+              ? <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+              : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            }
             내 주변
           </button>
         </div>
@@ -249,7 +283,7 @@ export default function HomePage() {
       <div className="max-w-5xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">
-            {loading ? '검색 중...' : nearbyMode ? `내 주변 ${filtered.length}개` : `${selectedRegion || '전국'} ${filtered.length}개 매물`}
+            {loading ? '검색 중...' : nearbyMode ? `내 주변 ${total}개` : `${selectedRegion || '전국'} 총 ${total.toLocaleString()}개 매물`}
           </p>
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             {(['list', 'map'] as const).map(v => (
@@ -262,30 +296,44 @@ export default function HomePage() {
         </div>
 
         {view === 'list' && (
-          loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {Array(8).fill(0).map((_, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-                  <div className="w-full h-44 bg-gray-100" />
-                  <div className="p-3 space-y-2"><div className="h-4 bg-gray-100 rounded" /><div className="h-3 bg-gray-100 rounded w-2/3" /></div>
+          <>
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {Array(8).fill(0).map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+                    <div className="w-full h-44 bg-gray-100" />
+                    <div className="p-3 space-y-2"><div className="h-4 bg-gray-100 rounded" /><div className="h-3 bg-gray-100 rounded w-2/3" /></div>
+                  </div>
+                ))}
+              </div>
+            ) : displayRooms.length === 0 ? (
+              <div className="text-center py-24 text-gray-400">
+                <p className="text-5xl mb-3">🏠</p>
+                <p className="text-sm font-medium">조건에 맞는 매물이 없어요</p>
+                <p className="text-xs mt-1">필터를 조정해보세요</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 fade-up">
+                  {displayRooms.map(room => (
+                    <RoomCard key={room.id} room={room}
+                      isFavorited={favorites.has(room.id)}
+                      onToggleFavorite={toggleFavorite} />
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-24 text-gray-400">
-              <p className="text-5xl mb-3">🏠</p>
-              <p className="text-sm font-medium">조건에 맞는 매물이 없어요</p>
-              <p className="text-xs mt-1">필터를 조정해보세요</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 fade-up">
-              {filtered.map(room => (
-                <RoomCard key={room.id} room={room}
-                  isFavorited={favorites.has(room.id)}
-                  onToggleFavorite={toggleFavorite} />
-              ))}
-            </div>
-          )
+
+                {/* 더 보기 버튼 */}
+                {hasMore && (
+                  <div className="text-center mt-6">
+                    <button onClick={loadMore} disabled={loadingMore}
+                      className="px-8 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-all shadow-sm">
+                      {loadingMore ? '불러오는 중...' : `더 보기 (${rooms.length}/${total.toLocaleString()})`}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
 
         {view === 'map' && (
@@ -294,12 +342,20 @@ export default function HomePage() {
               <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filtered.map(room => (
+              {displayRooms.map(room => (
                 <RoomCard key={room.id} room={room}
                   isFavorited={favorites.has(room.id)}
                   onToggleFavorite={toggleFavorite} />
               ))}
             </div>
+            {hasMore && (
+              <div className="text-center mt-4">
+                <button onClick={loadMore} disabled={loadingMore}
+                  className="px-8 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                  {loadingMore ? '불러오는 중...' : `더 보기 (${rooms.length}/${total.toLocaleString()})`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
