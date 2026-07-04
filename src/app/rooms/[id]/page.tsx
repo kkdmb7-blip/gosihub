@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase, Room } from '@/lib/supabase'
 import ReviewSection from '@/components/ReviewSection'
 
+declare global { interface Window { kakao: any; Kakao: any } }
+
 const AMENITY_LABELS: Record<string, string> = {
   wifi: 'Wi-Fi', meals: '식사제공', laundry: '세탁기',
   parking: '주차', cctv: 'CCTV', internet: '인터넷',
@@ -18,32 +20,25 @@ export default function RoomDetailPage() {
   const [loading, setLoading] = useState(true)
   const [photoIdx, setPhotoIdx] = useState(0)
   const [showContact, setShowContact] = useState(false)
+  const [favorited, setFavorited] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [subway, setSubway] = useState<{ name: string; minutes: number } | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (id) fetchRoom(id as string)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user)
+        checkFavorite(session.user.id, id as string)
+      }
+    })
   }, [id])
 
   useEffect(() => {
     if (!room?.lat || !room?.lng || !mapRef.current) return
-    const script = document.createElement('script')
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
-    script.onload = () => {
-      window.kakao?.maps.load(() => {
-        const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
-        const map = new window.kakao.maps.Map(mapRef.current!, { center: pos, level: 4 })
-        new window.kakao.maps.Marker({ position: pos, map })
-      })
-    }
-    if (!document.querySelector(`script[src*="dapi.kakao.com/v2/maps"]`)) {
-      document.head.appendChild(script)
-    } else {
-      window.kakao?.maps.load(() => {
-        const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
-        const map = new window.kakao.maps.Map(mapRef.current!, { center: pos, level: 4 })
-        new window.kakao.maps.Marker({ position: pos, map })
-      })
-    }
+    initDetailMap()
+    fetchSubway(room.lat, room.lng)
   }, [room])
 
   async function fetchRoom(roomId: string) {
@@ -51,6 +46,90 @@ export default function RoomDetailPage() {
     setRoom(data)
     setLoading(false)
   }
+
+  async function checkFavorite(userId: string, roomId: string) {
+    const { data } = await supabase.from('favorites').select('id').eq('user_id', userId).eq('room_id', roomId).single()
+    setFavorited(!!data)
+  }
+
+  async function toggleFavorite() {
+    if (!user) { window.location.href = '/api/auth/kakao'; return }
+    if (favorited) {
+      await supabase.from('favorites').delete().eq('room_id', id as string).eq('user_id', user.id)
+      setFavorited(false)
+    } else {
+      await supabase.from('favorites').insert({ room_id: id as string, user_id: user.id })
+      setFavorited(true)
+    }
+  }
+
+  async function fetchSubway(lat: number, lng: number) {
+    try {
+      const res = await fetch(
+        `https://dapi.kakao.com/v2/local/search/keyword.json?query=지하철역&x=${lng}&y=${lat}&radius=1500&sort=distance&size=1`,
+        { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` } }
+      )
+      const data = await res.json()
+      if (data.documents?.[0]) {
+        const dist = parseInt(data.documents[0].distance)
+        setSubway({ name: data.documents[0].place_name, minutes: Math.ceil(dist / 67) })
+      }
+    } catch (e) {}
+  }
+
+  function initDetailMap() {
+    const load = () => {
+      window.kakao?.maps.load(() => {
+        if (!mapRef.current || !room) return
+        const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
+        const map = new window.kakao.maps.Map(mapRef.current!, { center: pos, level: 4 })
+        new window.kakao.maps.Marker({ position: pos, map })
+      })
+    }
+    if (window.kakao?.maps) { load(); return }
+    if (!document.querySelector('script[src*="dapi.kakao.com/v2/maps"]')) {
+      const script = document.createElement('script')
+      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
+      script.onload = load
+      document.head.appendChild(script)
+    } else {
+      load()
+    }
+  }
+
+  function shareKakao() {
+    const siteUrl = `https://gosihub.vercel.app/rooms/${id}`
+    if (!window.Kakao) {
+      const script = document.createElement('script')
+      script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js'
+      script.onload = () => {
+        if (!window.Kakao.isInitialized()) window.Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY)
+        doShare(siteUrl)
+      }
+      document.head.appendChild(script)
+    } else {
+      if (!window.Kakao.isInitialized()) window.Kakao.init(process.env.NEXT_PUBLIC_KAKAO_JS_KEY)
+      doShare(siteUrl)
+    }
+  }
+
+  function doShare(url: string) {
+    if (!room) return
+    window.Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: room.title,
+        description: `${room.address} | 월 ${room.price}만원`,
+        imageUrl: room.photos?.[0] || 'https://gosihub.vercel.app/icon.png',
+        link: { mobileWebUrl: url, webUrl: url },
+      },
+      buttons: [{ title: '방 보러가기', link: { mobileWebUrl: url, webUrl: url } }],
+    })
+  }
+
+  const daysSince = room
+    ? Math.floor((Date.now() - new Date(room.last_confirmed_at || room.created_at).getTime()) / 86400000)
+    : 0
 
   if (loading) {
     return (
@@ -74,13 +153,8 @@ export default function RoomDetailPage() {
     )
   }
 
-  const daysSince = Math.floor(
-    (Date.now() - new Date(room.last_confirmed_at || room.created_at).getTime()) / 86400000
-  )
-
   return (
     <div className="max-w-2xl mx-auto px-4 py-4 pb-24">
-      {/* 뒤로가기 */}
       <button onClick={() => router.back()} className="text-sm text-gray-500 mb-4 flex items-center gap-1 hover:text-gray-800">
         ← 목록으로
       </button>
@@ -92,16 +166,12 @@ export default function RoomDetailPage() {
             <img src={room.photos[photoIdx]} alt="" className="w-full h-full object-cover" />
             {room.photos.length > 1 && (
               <>
-                <button
-                  onClick={() => setPhotoIdx(i => Math.max(0, i - 1))}
+                <button onClick={() => setPhotoIdx(i => Math.max(0, i - 1))}
                   className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-8 h-8 flex items-center justify-center text-gray-700 shadow-sm"
-                  style={{ display: photoIdx === 0 ? 'none' : 'flex' }}
-                >‹</button>
-                <button
-                  onClick={() => setPhotoIdx(i => Math.min(room.photos.length - 1, i + 1))}
+                  style={{ display: photoIdx === 0 ? 'none' : 'flex' }}>‹</button>
+                <button onClick={() => setPhotoIdx(i => Math.min(room.photos.length - 1, i + 1))}
                   className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-8 h-8 flex items-center justify-center text-gray-700 shadow-sm"
-                  style={{ display: photoIdx === room.photos.length - 1 ? 'none' : 'flex' }}
-                >›</button>
+                  style={{ display: photoIdx === room.photos.length - 1 ? 'none' : 'flex' }}>›</button>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
                   {room.photos.map((_, i) => (
                     <div key={i} onClick={() => setPhotoIdx(i)}
@@ -126,7 +196,20 @@ export default function RoomDetailPage() {
         </div>
 
         <h1 className="text-lg font-bold text-gray-900 mb-1">{room.title}</h1>
-        <p className="text-sm text-gray-500 mb-3">{room.address}</p>
+        <p className="text-sm text-gray-500 mb-2">{room.address}</p>
+
+        {/* 지하철 도보 거리 */}
+        {subway && (
+          <div className="flex items-center gap-1.5 mb-3">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2">
+              <rect x="5" y="2" width="14" height="20" rx="3"/>
+              <line x1="12" y1="18" x2="12" y2="18.01"/>
+              <path d="M9 6h6M8 12h8"/>
+            </svg>
+            <span className="text-xs text-gray-500">{subway.name}</span>
+            <span className="text-xs font-semibold text-blue-600">도보 {subway.minutes}분</span>
+          </div>
+        )}
 
         <div className="flex items-baseline gap-2 mb-4">
           {room.deposit > 0 && (
@@ -149,7 +232,6 @@ export default function RoomDetailPage() {
           ))}
         </div>
 
-        {/* 편의시설 */}
         {room.amenities?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {room.amenities.map(a => (
@@ -190,8 +272,27 @@ export default function RoomDetailPage() {
         <ReviewSection roomId={id as string} ownerId={room.owner_id} />
       </div>
 
-      {/* 고정 하단 연락처 버튼 */}
+      {/* 고정 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 max-w-2xl mx-auto">
+        {/* 즐겨찾기 */}
+        <button onClick={toggleFavorite}
+          className={`w-12 flex-shrink-0 flex items-center justify-center rounded-xl border transition-all ${favorited ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24"
+            fill={favorited ? '#ef4444' : 'none'}
+            stroke={favorited ? '#ef4444' : '#9ca3af'} strokeWidth="2">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+
+        {/* 카카오 공유 */}
+        <button onClick={shareKakao}
+          className="w-12 flex-shrink-0 flex items-center justify-center rounded-xl bg-yellow-400 border border-yellow-500">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3C6.48 3 2 6.48 2 10.8c0 2.7 1.6 5.1 4 6.6l-1 3.6 4.1-2.7c.9.2 1.9.3 2.9.3 5.52 0 10-3.48 10-7.8S17.52 3 12 3z" fill="#3A1D1D"/>
+          </svg>
+        </button>
+
+        {/* 연락처 */}
         {showContact ? (
           <a href={`tel:${room.owner_phone}`}
             className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl text-center text-sm">
@@ -203,10 +304,11 @@ export default function RoomDetailPage() {
             연락처 보기
           </button>
         )}
+
         {(room as any).kakao_open_chat && (
           <a href={(room as any).kakao_open_chat} target="_blank"
-            className="bg-yellow-400 text-yellow-900 font-bold py-3.5 px-5 rounded-xl text-sm whitespace-nowrap">
-            카카오 문의
+            className="bg-yellow-400 text-yellow-900 font-bold py-3.5 px-4 rounded-xl text-sm whitespace-nowrap">
+            채팅
           </a>
         )}
       </div>

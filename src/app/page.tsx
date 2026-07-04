@@ -14,7 +14,6 @@ const PRICE_OPTIONS = [
   { label: '~70만', max: 70, min: 0 },
   { label: '70만+', max: 9999, min: 70 },
 ]
-
 const REGIONS = [
   { label: '전체', value: '' },
   { label: '서울', value: '서울' },
@@ -45,8 +44,18 @@ export default function HomePage() {
   const [locating, setLocating] = useState(false)
   const [nearbyMode, setNearbyMode] = useState(false)
   const [userPos, setUserPos] = useState<{lat: number, lng: number} | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
-  useEffect(() => { fetchRooms() }, [])
+  useEffect(() => {
+    fetchRooms()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user)
+        loadFavorites(session.user.id)
+      }
+    })
+  }, [])
   useEffect(() => { applyFilter() }, [rooms, keyword, selectedTypes, selectedGender, priceIdx, mealsOnly, selectedRegion, nearbyMode, userPos])
   useEffect(() => {
     if (view === 'map') {
@@ -61,13 +70,25 @@ export default function HomePage() {
 
   async function fetchRooms() {
     setLoading(true)
-    const { data } = await supabase
-      .from('rooms')
-      .select('*')
-      .eq('is_active', true)
-      .order('last_confirmed_at', { ascending: false })
+    const { data } = await supabase.from('rooms').select('*').eq('is_active', true).order('last_confirmed_at', { ascending: false })
     setRooms(data || [])
     setLoading(false)
+  }
+
+  async function loadFavorites(userId: string) {
+    const { data } = await supabase.from('favorites').select('room_id').eq('user_id', userId)
+    setFavorites(new Set((data || []).map((f: any) => f.room_id)))
+  }
+
+  async function toggleFavorite(roomId: string) {
+    if (!user) { window.location.href = '/api/auth/kakao'; return }
+    if (favorites.has(roomId)) {
+      await supabase.from('favorites').delete().eq('room_id', roomId).eq('user_id', user.id)
+      setFavorites(prev => { const n = new Set(prev); n.delete(roomId); return n })
+    } else {
+      await supabase.from('favorites').insert({ room_id: roomId, user_id: user.id })
+      setFavorites(prev => new Set([...prev, roomId]))
+    }
   }
 
   function applyFilter() {
@@ -91,10 +112,7 @@ export default function HomePage() {
     if (nearbyMode && userPos) {
       result = result
         .filter(r => r.lat && r.lng)
-        .map(r => ({
-          ...r,
-          _dist: Math.sqrt(Math.pow(r.lat - userPos.lat, 2) + Math.pow(r.lng - userPos.lng, 2))
-        }))
+        .map(r => ({ ...r, _dist: Math.sqrt(Math.pow(r.lat - userPos.lat, 2) + Math.pow(r.lng - userPos.lng, 2)) }))
         .sort((a: any, b: any) => a._dist - b._dist)
         .slice(0, 50) as Room[]
     }
@@ -118,14 +136,11 @@ export default function HomePage() {
           kakaoMap.current.setLevel(5)
         }
       },
-      () => { alert('위치 정보를 가져올 수 없어요. 브라우저 위치 권한을 확인해주세요.'); setLocating(false) }
+      () => { alert('위치 정보를 가져올 수 없어요.'); setLocating(false) }
     )
   }
 
-  function clearNearby() {
-    setNearbyMode(false)
-    setUserPos(null)
-  }
+  function clearNearby() { setNearbyMode(false); setUserPos(null) }
 
   function createMap() {
     if (!mapRef.current || kakaoMap.current) return
@@ -264,7 +279,11 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 fade-up">
-              {filtered.map(room => <RoomCard key={room.id} room={room} />)}
+              {filtered.map(room => (
+                <RoomCard key={room.id} room={room}
+                  isFavorited={favorites.has(room.id)}
+                  onToggleFavorite={toggleFavorite} />
+              ))}
             </div>
           )
         )}
@@ -275,7 +294,11 @@ export default function HomePage() {
               <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {filtered.map(room => <RoomCard key={room.id} room={room} />)}
+              {filtered.map(room => (
+                <RoomCard key={room.id} room={room}
+                  isFavorited={favorites.has(room.id)}
+                  onToggleFavorite={toggleFavorite} />
+              ))}
             </div>
           </div>
         )}

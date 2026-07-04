@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 로컬 스크립트 (키 포함)
+insert_*.js
+setup_*.js
+check_*.js
+fetch_*.js
+generate_*.js
