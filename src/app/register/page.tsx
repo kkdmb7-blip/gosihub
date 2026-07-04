@@ -6,6 +6,7 @@ import { supabase, RoomType, GenderType } from '@/lib/supabase'
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
 const MIN_CONTRACTS = ['1개월', '3개월', '6개월', '1년']
+const PHOTO_CATS = ['개인방', '화장실', '주방', '세탁실', '복도', '외관']
 const AMENITIES = [
   { key: 'wifi', label: 'Wi-Fi' },
   { key: 'meals', label: '식사제공' },
@@ -29,6 +30,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [photos, setPhotos] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
+  const [photoCategories, setPhotoCategories] = useState<string[]>([])
 
   const [form, setForm] = useState({
     title: '',
@@ -70,6 +72,11 @@ export default function RegisterPage() {
     const files = Array.from(e.target.files || []).slice(0, 8)
     setPhotos(files)
     setPhotoPreviews(files.map(f => URL.createObjectURL(f)))
+    setPhotoCategories(files.map(() => ''))
+  }
+
+  function setPhotoCategory(i: number, cat: string) {
+    setPhotoCategories(prev => { const n = [...prev]; n[i] = cat; return n })
   }
 
   function openAddressSearch() {
@@ -169,6 +176,7 @@ export default function RegisterPage() {
         cctv: form.amenities.includes('cctv'),
         laundry: form.amenities.includes('laundry'),
         photos: photoUrls,
+        photo_categories: photoCategories.slice(0, photoUrls.length),
         is_active: true,
         last_confirmed_at: new Date().toISOString(),
       })
@@ -341,7 +349,14 @@ export default function RegisterPage() {
             {photoPreviews.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {photoPreviews.map((p, i) => (
-                  <img key={i} src={p} className="w-20 h-20 object-cover rounded-xl" />
+                  <div key={i} className="flex flex-col gap-1" style={{ width: 80 }}>
+                    <img src={p} className="w-20 h-20 object-cover rounded-xl" />
+                    <select value={photoCategories[i] || ''} onChange={e => setPhotoCategory(i, e.target.value)}
+                      className="text-xs border border-gray-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none w-full">
+                      <option value="">태그없음</option>
+                      {PHOTO_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 ))}
               </div>
             )}

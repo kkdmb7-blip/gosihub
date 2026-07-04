@@ -55,6 +55,7 @@ export interface Room {
   management_fee: number
   min_contract?: string
   pets_allowed: boolean
+  photo_categories?: string[]
 }
 
 export interface User {

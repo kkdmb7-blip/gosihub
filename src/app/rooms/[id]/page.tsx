@@ -19,6 +19,7 @@ export default function RoomDetailPage() {
   const [room, setRoom] = useState<Room | null>(null)
   const [loading, setLoading] = useState(true)
   const [photoIdx, setPhotoIdx] = useState(0)
+  const [photoTab, setPhotoTab] = useState('전체')
   const [showContact, setShowContact] = useState(false)
   const [favorited, setFavorited] = useState(false)
   const [user, setUser] = useState<any>(null)
@@ -177,6 +178,15 @@ export default function RoomDetailPage() {
     ? Math.floor((Date.now() - new Date(room.last_confirmed_at || room.created_at).getTime()) / 86400000)
     : 0
 
+  const PHOTO_CATS = ['개인방', '화장실', '주방', '세탁실', '복도', '외관']
+  const photoCategories: string[] = room?.photo_categories || []
+  const availablePhotoTabs = room ? ['전체', ...PHOTO_CATS.filter(cat =>
+    room.photos?.some((_, i) => photoCategories[i] === cat)
+  )] : ['전체']
+  const filteredPhotos = room
+    ? (photoTab === '전체' ? room.photos : room.photos?.filter((_, i) => photoCategories[i] === photoTab)) || []
+    : []
+
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 animate-pulse">
@@ -205,27 +215,44 @@ export default function RoomDetailPage() {
         ← 목록으로
       </button>
 
+      {/* 사진 카테고리 탭 */}
+      {availablePhotoTabs.length > 1 && (
+        <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
+          {availablePhotoTabs.map(tab => (
+            <button key={tab} onClick={() => { setPhotoTab(tab); setPhotoIdx(0) }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap border transition-all flex-shrink-0 ${
+                photoTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'
+              }`}>
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* 사진 갤러리 */}
       <div className="relative w-full rounded-2xl overflow-hidden bg-gray-100 mb-4" style={{ height: 280 }}>
-        {room.photos?.length > 0 ? (
+        {filteredPhotos.length > 0 ? (
           <>
-            <img src={room.photos[photoIdx]} alt="" className="w-full h-full object-cover" />
-            {room.photos.length > 1 && (
+            <img src={filteredPhotos[photoIdx] || filteredPhotos[0]} alt="" className="w-full h-full object-cover" />
+            {filteredPhotos.length > 1 && (
               <>
                 <button onClick={() => setPhotoIdx(i => Math.max(0, i - 1))}
                   className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-8 h-8 flex items-center justify-center text-gray-700 shadow-sm"
                   style={{ display: photoIdx === 0 ? 'none' : 'flex' }}>‹</button>
-                <button onClick={() => setPhotoIdx(i => Math.min(room.photos.length - 1, i + 1))}
+                <button onClick={() => setPhotoIdx(i => Math.min(filteredPhotos.length - 1, i + 1))}
                   className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 rounded-full w-8 h-8 flex items-center justify-center text-gray-700 shadow-sm"
-                  style={{ display: photoIdx === room.photos.length - 1 ? 'none' : 'flex' }}>›</button>
+                  style={{ display: photoIdx === filteredPhotos.length - 1 ? 'none' : 'flex' }}>›</button>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1">
-                  {room.photos.map((_, i) => (
+                  {filteredPhotos.map((_, i) => (
                     <div key={i} onClick={() => setPhotoIdx(i)}
                       className={`w-1.5 h-1.5 rounded-full cursor-pointer ${i === photoIdx ? 'bg-white' : 'bg-white/50'}`} />
                   ))}
                 </div>
               </>
             )}
+            <span className="absolute top-3 right-3 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+              {(photoIdx + 1)}/{filteredPhotos.length}
+            </span>
           </>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300 text-4xl">🏠</div>

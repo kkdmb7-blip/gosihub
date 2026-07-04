@@ -6,6 +6,7 @@ import { supabase, RoomType, GenderType } from '@/lib/supabase'
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
 const MIN_CONTRACTS = ['1개월', '3개월', '6개월', '1년']
+const PHOTO_CATS = ['개인방', '화장실', '주방', '세탁실', '복도', '외관']
 const AMENITIES = [
   { key: 'wifi', label: 'Wi-Fi' },
   { key: 'meals', label: '식사제공' },
@@ -30,6 +31,8 @@ export default function EditRoomPage() {
   const [fetching, setFetching] = useState(true)
   const [newPhotos, setNewPhotos] = useState<File[]>([])
   const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([])
+  const [newPhotoCategories, setNewPhotoCategories] = useState<string[]>([])
+  const [existingPhotoCategories, setExistingPhotoCategories] = useState<string[]>([])
 
   const [form, setFormState] = useState({
     title: '',
@@ -92,6 +95,7 @@ export default function EditRoomPage() {
       amenities: room.amenities || [],
       existingPhotos: room.photos || [],
     })
+    setExistingPhotoCategories(room.photo_categories || (room.photos || []).map(() => ''))
     setFetching(false)
   }
 
@@ -113,12 +117,22 @@ export default function EditRoomPage() {
       ...prev,
       existingPhotos: prev.existingPhotos.filter((_, i) => i !== idx)
     }))
+    setExistingPhotoCategories(prev => prev.filter((_, i) => i !== idx))
   }
 
   function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []).slice(0, 8 - form.existingPhotos.length)
     setNewPhotos(files)
     setNewPhotoPreviews(files.map(f => URL.createObjectURL(f)))
+    setNewPhotoCategories(files.map(() => ''))
+  }
+
+  function setNewPhotoCategory(i: number, cat: string) {
+    setNewPhotoCategories(prev => { const n = [...prev]; n[i] = cat; return n })
+  }
+
+  function setExistingPhotoCategory(i: number, cat: string) {
+    setExistingPhotoCategories(prev => { const n = [...prev]; n[i] = cat; return n })
   }
 
   async function geocodeAddress(addr: string) {
@@ -206,6 +220,10 @@ export default function EditRoomPage() {
         cctv: form.amenities.includes('cctv'),
         laundry: form.amenities.includes('laundry'),
         photos: photoUrls,
+        photo_categories: [
+          ...existingPhotoCategories,
+          ...newPhotoCategories.slice(0, newPhotos.length),
+        ].slice(0, photoUrls.length),
         updated_at: new Date().toISOString(),
       }).eq('id', id as string)
 
@@ -363,12 +381,19 @@ export default function EditRoomPage() {
             <label className={labelCls}>현재 사진 <span className="text-gray-400 font-normal text-xs">(X 버튼으로 삭제)</span></label>
             <div className="flex gap-2 flex-wrap">
               {form.existingPhotos.map((p, i) => (
-                <div key={i} className="relative">
-                  <img src={p} className="w-20 h-20 object-cover rounded-xl" />
-                  <button onClick={() => removeExistingPhoto(i)}
-                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center font-bold">
-                    ×
-                  </button>
+                <div key={i} className="flex flex-col gap-1" style={{ width: 80 }}>
+                  <div className="relative">
+                    <img src={p} className="w-20 h-20 object-cover rounded-xl" />
+                    <button onClick={() => removeExistingPhoto(i)}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center font-bold">
+                      ×
+                    </button>
+                  </div>
+                  <select value={existingPhotoCategories[i] || ''} onChange={e => setExistingPhotoCategory(i, e.target.value)}
+                    className="text-xs border border-gray-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none w-full">
+                    <option value="">태그없음</option>
+                    {PHOTO_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
               ))}
             </div>
@@ -386,7 +411,14 @@ export default function EditRoomPage() {
             {newPhotoPreviews.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {newPhotoPreviews.map((p, i) => (
-                  <img key={i} src={p} className="w-20 h-20 object-cover rounded-xl" />
+                  <div key={i} className="flex flex-col gap-1" style={{ width: 80 }}>
+                    <img src={p} className="w-20 h-20 object-cover rounded-xl" />
+                    <select value={newPhotoCategories[i] || ''} onChange={e => setNewPhotoCategory(i, e.target.value)}
+                      className="text-xs border border-gray-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none w-full">
+                      <option value="">태그없음</option>
+                      {PHOTO_CATS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 ))}
               </div>
             )}
