@@ -28,6 +28,10 @@ export default function MyPage() {
   const [alertSaved, setAlertSaved] = useState(false)
   const [showTenantForm, setShowTenantForm] = useState(false)
   const [tenantForm, setTenantForm] = useState({ room_id: '', move_in_date: '', contract_months: 6, note: '' })
+  const [payingFor, setPayingFor] = useState<TenantRoom | null>(null)
+  const [payPhone, setPayPhone] = useState('')
+  const [paying, setPaying] = useState(false)
+  const [payments, setPayments] = useState<any[]>([])
 
   useEffect(() => { checkUser() }, [])
 
@@ -39,9 +43,65 @@ export default function MyPage() {
       fetchFavorites(session.user.id)
       fetchAlert(session.user.id)
       fetchTenantRooms(session.user.id)
+      fetchPayments(session.user.id)
     } else {
       setLoading(false)
     }
+  }
+
+  async function fetchPayments(userId?: string) {
+    const uid = userId || user?.id
+    if (!uid) return
+    const { data } = await supabase.from('rent_payments').select('*').eq('user_id', uid).order('created_at', { ascending: false }).limit(20)
+    setPayments(data || [])
+  }
+
+  function loadPortOne(): Promise<void> {
+    return new Promise(resolve => {
+      if ((window as any).PortOne) { resolve(); return }
+      const script = document.createElement('script')
+      script.src = 'https://cdn.portone.io/v2/browser-sdk.js'
+      script.onload = () => resolve()
+      document.head.appendChild(script)
+    })
+  }
+
+  async function requestRentPayment() {
+    if (!payingFor || !payPhone.trim()) return
+    setPaying(true)
+    const paymentId = `rent_${user.id.slice(0, 8)}_${Date.now()}`
+    const amount = payingFor.rooms.price * 10000
+    await supabase.from('rent_payments').insert({
+      user_id: user.id, room_id: payingFor.room_id,
+      amount, payment_id: paymentId, status: 'pending',
+    })
+    try {
+      await loadPortOne()
+      const res = await (window as any).PortOne.requestPayment({
+        storeId: 'store-1139f195-d75f-44ca-bed6-c2c89c59e913',
+        channelKey: 'channel-key-c7608d6b-f758-4bbb-a0ad-252c5141c50c',
+        paymentId,
+        orderName: `${payingFor.rooms.title} 월세`,
+        totalAmount: amount,
+        currency: 'KRW',
+        payMethod: 'CARD',
+        customer: { phoneNumber: payPhone.replace(/\D/g, '') },
+      })
+      if (res?.code) {
+        await supabase.from('rent_payments').update({ status: 'failed' }).eq('payment_id', paymentId)
+        alert('결제가 취소되었어요')
+      } else {
+        await supabase.from('rent_payments').update({ status: 'completed', paid_at: new Date().toISOString() }).eq('payment_id', paymentId)
+        alert(`${(amount / 10000).toLocaleString()}만원 결제가 완료됐어요!`)
+        fetchPayments()
+      }
+    } catch (e: any) {
+      await supabase.from('rent_payments').update({ status: 'failed' }).eq('payment_id', paymentId)
+      alert('결제 중 오류: ' + (e?.message || '알 수 없는 오류'))
+    }
+    setPayingFor(null)
+    setPayPhone('')
+    setPaying(false)
   }
 
   async function fetchTenantRooms(userId: string) {
@@ -385,16 +445,80 @@ export default function MyPage() {
 
                     {tr.note && <p className="text-xs text-gray-400 mt-2 pl-1">메모: {tr.note}</p>}
 
-                    <button onClick={() => deleteTenantRoom(tr.id)}
-                      className="mt-2 text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg w-full">
-                      삭제
-                    </button>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => { setPayingFor(tr); setPayPhone('') }}
+                        className="flex-1 text-xs bg-blue-600 text-white font-bold py-2 rounded-xl">
+                        월세 결제 {tr.rooms?.price}만원
+                      </button>
+                      <button onClick={() => deleteTenantRoom(tr.id)}
+                        className="text-xs text-red-400 border border-red-100 px-3 py-2 rounded-xl">
+                        삭제
+                      </button>
+                    </div>
                   </div>
                 )
               })}
             </div>
           )}
         </>
+      )}
+
+          {/* 결제 내역 */}
+          {payments.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-bold text-gray-700 mb-3">결제 내역</h3>
+              <div className="space-y-2">
+                {payments.map(p => (
+                  <div key={p.id} className="flex items-center justify-between bg-white border border-gray-100 rounded-xl px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{(p.amount / 10000).toLocaleString()}만원</p>
+                      <p className="text-xs text-gray-400">{(p.paid_at || p.created_at)?.slice(0, 10)}</p>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                      p.status === 'completed' ? 'bg-green-50 text-green-700' :
+                      p.status === 'failed' ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-400'
+                    }`}>
+                      {p.status === 'completed' ? '완료' : p.status === 'failed' ? '실패' : '대기'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 결제 모달 */}
+      {payingFor && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => !paying && setPayingFor(null)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <h3 className="text-base font-bold text-gray-900 mb-1">월세 결제</h3>
+            <p className="text-sm text-gray-500 mb-4">{payingFor.rooms?.title}</p>
+            <div className="bg-blue-50 rounded-xl p-3 mb-4 flex items-center justify-between">
+              <span className="text-sm text-blue-700">결제 금액</span>
+              <span className="text-lg font-bold text-blue-700">{payingFor.rooms?.price}만원</span>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">연락처 (결제 인증용)</label>
+            <input
+              type="tel"
+              value={payPhone}
+              onChange={e => setPayPhone(e.target.value)}
+              placeholder="010-0000-0000"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setPayingFor(null)} disabled={paying}
+                className="flex-1 border border-gray-200 text-gray-500 font-medium py-3.5 rounded-xl text-sm">
+                취소
+              </button>
+              <button onClick={requestRentPayment} disabled={paying || !payPhone.trim()}
+                className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm disabled:opacity-40">
+                {paying ? '결제 중...' : `${payingFor.rooms?.price}만원 결제하기`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 방 알람 탭 */}
