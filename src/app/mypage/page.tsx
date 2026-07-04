@@ -8,14 +8,26 @@ const TYPES = ['고시원', '고시텔', '원룸텔', '하숙']
 const GENDERS = ['남녀공용', '남성전용', '여성전용']
 const REGIONS_LIST = ['', '서울', '경기', '인천', '부산', '대구', '대전', '광주']
 
+interface TenantRoom {
+  id: string
+  room_id: string
+  move_in_date: string
+  contract_months: number
+  note: string
+  rooms: Room
+}
+
 export default function MyPage() {
-  const [tab, setTab] = useState<'rooms' | 'favorites' | 'alerts'>('rooms')
+  const [tab, setTab] = useState<'rooms' | 'favorites' | 'alerts' | 'tenant'>('rooms')
   const [rooms, setRooms] = useState<Room[]>([])
   const [favRooms, setFavRooms] = useState<Room[]>([])
+  const [tenantRooms, setTenantRooms] = useState<TenantRoom[]>([])
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [alert, setAlertState] = useState({ region: '', types: [] as string[], max_price: 100, gender: '' })
   const [alertSaved, setAlertSaved] = useState(false)
+  const [showTenantForm, setShowTenantForm] = useState(false)
+  const [tenantForm, setTenantForm] = useState({ room_id: '', move_in_date: '', contract_months: 6, note: '' })
 
   useEffect(() => { checkUser() }, [])
 
@@ -26,9 +38,40 @@ export default function MyPage() {
       fetchMyRooms(session.user.id)
       fetchFavorites(session.user.id)
       fetchAlert(session.user.id)
+      fetchTenantRooms(session.user.id)
     } else {
       setLoading(false)
     }
+  }
+
+  async function fetchTenantRooms(userId: string) {
+    const { data } = await supabase.from('tenant_rooms').select('*, rooms(*)').eq('user_id', userId).order('move_in_date', { ascending: false })
+    setTenantRooms((data || []).filter((t: any) => t.rooms) as TenantRoom[])
+  }
+
+  async function saveTenantRoom() {
+    if (!tenantForm.room_id.trim() || !tenantForm.move_in_date) return
+    await supabase.from('tenant_rooms').upsert({
+      user_id: user.id,
+      room_id: tenantForm.room_id.trim(),
+      move_in_date: tenantForm.move_in_date,
+      contract_months: tenantForm.contract_months,
+      note: tenantForm.note || null,
+    }, { onConflict: 'user_id,room_id' })
+    setShowTenantForm(false)
+    setTenantForm({ room_id: '', move_in_date: '', contract_months: 6, note: '' })
+    fetchTenantRooms(user.id)
+  }
+
+  async function deleteTenantRoom(id: string) {
+    await supabase.from('tenant_rooms').delete().eq('id', id)
+    setTenantRooms(prev => prev.filter(t => t.id !== id))
+  }
+
+  function getDaysUntilExpiry(moveIn: string, months: number): number {
+    const expiry = new Date(moveIn)
+    expiry.setMonth(expiry.getMonth() + months)
+    return Math.ceil((expiry.getTime() - Date.now()) / 86400000)
   }
 
   async function fetchMyRooms(userId: string) {
@@ -111,14 +154,15 @@ export default function MyPage() {
   return (
     <div className="max-w-lg mx-auto px-4 py-6">
       {/* 탭 */}
-      <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+      <div className="flex bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto">
         {[
           { key: 'rooms', label: `내 매물 ${rooms.length}` },
           { key: 'favorites', label: `즐겨찾기 ${favRooms.length}` },
+          { key: 'tenant', label: '입주관리' },
           { key: 'alerts', label: '방 알람' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key as any)}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap px-2 ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
             {t.label}
           </button>
         ))}
@@ -227,6 +271,127 @@ export default function MyPage() {
                   <RoomCard room={room} isFavorited={true} onToggleFavorite={removeFavorite} />
                 </div>
               ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 입주 관리 탭 */}
+      {tab === 'tenant' && (
+        <>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">입주 관리</h2>
+            <button onClick={() => setShowTenantForm(true)}
+              className="text-sm bg-blue-600 text-white px-4 py-2 rounded-xl font-medium">
+              + 입주 등록
+            </button>
+          </div>
+
+          {/* 입주 등록 폼 */}
+          {showTenantForm && (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-4 space-y-3">
+              <p className="text-sm font-semibold text-blue-800">입주 정보 등록</p>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">방 ID</label>
+                <input
+                  value={tenantForm.room_id}
+                  onChange={e => setTenantForm(p => ({ ...p, room_id: e.target.value }))}
+                  placeholder="방 상세 페이지 URL의 마지막 ID"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white"
+                />
+                <p className="text-xs text-gray-400 mt-1">방 URL: gosihub.vercel.app/rooms/<strong>이 부분</strong></p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">입주일</label>
+                  <input type="date" value={tenantForm.move_in_date}
+                    onChange={e => setTenantForm(p => ({ ...p, move_in_date: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">계약기간 (개월)</label>
+                  <select value={tenantForm.contract_months}
+                    onChange={e => setTenantForm(p => ({ ...p, contract_months: parseInt(e.target.value) }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white">
+                    {[1, 3, 6, 12, 24].map(m => <option key={m} value={m}>{m}개월</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">메모 (선택)</label>
+                <input value={tenantForm.note}
+                  onChange={e => setTenantForm(p => ({ ...p, note: e.target.value }))}
+                  placeholder="특이사항 등"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-400 bg-white" />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowTenantForm(false)}
+                  className="flex-1 border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm">취소</button>
+                <button onClick={saveTenantRoom}
+                  className="flex-1 bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm">저장</button>
+              </div>
+            </div>
+          )}
+
+          {tenantRooms.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <p className="text-4xl mb-3">🏠</p>
+              <p className="text-sm">등록된 입주 정보가 없어요</p>
+              <p className="text-xs mt-1">입주한 방을 등록하면 계약 만료 알림을 관리할 수 있어요</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {tenantRooms.map(tr => {
+                const daysLeft = getDaysUntilExpiry(tr.move_in_date, tr.contract_months)
+                const expiry = new Date(tr.move_in_date)
+                expiry.setMonth(expiry.getMonth() + tr.contract_months)
+                const isExpiringSoon = daysLeft <= 30 && daysLeft > 0
+                const isExpired = daysLeft <= 0
+
+                return (
+                  <div key={tr.id} className={`bg-white rounded-2xl border p-4 shadow-sm ${isExpired ? 'border-red-200' : isExpiringSoon ? 'border-amber-200' : 'border-gray-100'}`}>
+                    <div className="flex items-start gap-3">
+                      {tr.rooms?.photos?.[0] ? (
+                        <img src={tr.rooms.photos[0]} className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-gray-100 flex items-center justify-center text-gray-300 flex-shrink-0 text-xl">🏠</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/rooms/${tr.room_id}`}>
+                          <p className="text-sm font-semibold text-gray-900 truncate hover:text-blue-600">{tr.rooms?.title || '방 정보 없음'}</p>
+                        </Link>
+                        <p className="text-xs text-gray-400 truncate">{tr.rooms?.address}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">입주일: {tr.move_in_date} · {tr.contract_months}개월 계약</p>
+                        <p className="text-xs text-gray-500">만료일: {expiry.toISOString().slice(0, 10)}</p>
+                      </div>
+                    </div>
+
+                    {/* 만료 상태 배너 */}
+                    {isExpired ? (
+                      <div className="mt-3 bg-red-50 border border-red-100 rounded-xl p-2.5">
+                        <p className="text-xs font-bold text-red-600">계약이 만료되었어요</p>
+                        <p className="text-xs text-red-500">재계약 또는 이사 여부를 확인하세요</p>
+                      </div>
+                    ) : isExpiringSoon ? (
+                      <div className="mt-3 bg-amber-50 border border-amber-100 rounded-xl p-2.5 flex items-center justify-between">
+                        <p className="text-xs text-amber-700 font-semibold">만료 {daysLeft}일 전</p>
+                        <p className="text-xs text-amber-600">재계약 여부를 확인해보세요</p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 bg-gray-50 rounded-xl p-2 flex items-center justify-between">
+                        <p className="text-xs text-gray-500">만료까지 <span className="font-semibold text-gray-700">{daysLeft}일</span> 남았어요</p>
+                      </div>
+                    )}
+
+                    {tr.note && <p className="text-xs text-gray-400 mt-2 pl-1">메모: {tr.note}</p>}
+
+                    <button onClick={() => deleteTenantRoom(tr.id)}
+                      className="mt-2 text-xs text-red-400 border border-red-100 px-3 py-1.5 rounded-lg w-full">
+                      삭제
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </>
