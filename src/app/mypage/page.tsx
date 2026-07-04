@@ -129,9 +129,13 @@ export default function MyPage() {
                     className="flex-1 text-xs border border-gray-200 text-gray-600 py-2 rounded-lg font-medium">
                     {room.is_active ? '숨기기' : '게시하기'}
                   </button>
+                  <Link href={`/rooms/${room.id}/edit`}
+                    className="flex-1 text-xs border border-blue-200 text-blue-600 py-2 rounded-lg font-medium text-center">
+                    수정
+                  </Link>
                   <button onClick={() => confirmStillAvailable(room)}
-                    className="flex-1 text-xs border border-blue-200 text-blue-600 py-2 rounded-lg font-medium">
-                    정보 갱신
+                    className="flex-1 text-xs border border-green-200 text-green-600 py-2 rounded-lg font-medium">
+                    갱신
                   </button>
                   <button onClick={() => deleteRoom(room.id)}
                     className="text-xs border border-red-100 text-red-400 px-3 py-2 rounded-lg">
