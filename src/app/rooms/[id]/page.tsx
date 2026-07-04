@@ -23,6 +23,8 @@ export default function RoomDetailPage() {
   const [favorited, setFavorited] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [subway, setSubway] = useState<{ name: string; minutes: number } | null>(null)
+  const [claiming, setClaiming] = useState(false)
+  const [claimed, setClaimed] = useState(false)
   const mapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,6 +52,17 @@ export default function RoomDetailPage() {
   async function checkFavorite(userId: string, roomId: string) {
     const { data } = await supabase.from('favorites').select('id').eq('user_id', userId).eq('room_id', roomId).single()
     setFavorited(!!data)
+  }
+
+  async function claimRoom() {
+    if (!user) { window.location.href = '/api/auth/kakao'; return }
+    if (!confirm('이 매물을 내 매물로 등록할까요?\n마이페이지에서 수정/관리할 수 있게 됩니다.')) return
+    setClaiming(true)
+    const { error } = await supabase.from('rooms').update({ owner_id: user.id }).eq('id', id as string).is('owner_id', null)
+    setClaiming(false)
+    if (error) { alert('오류가 발생했어요: ' + error.message); return }
+    setClaimed(true)
+    setRoom(prev => prev ? { ...prev, owner_id: user.id } : prev)
   }
 
   async function toggleFavorite() {
@@ -265,6 +278,24 @@ export default function RoomDetailPage() {
           <h2 className="text-sm font-bold text-gray-700 mb-3">위치</h2>
           <div ref={mapRef} className="w-full rounded-xl overflow-hidden" style={{ height: 200 }} />
           <p className="text-xs text-gray-400 mt-2">{room.address}</p>
+        </div>
+      )}
+
+      {/* 내 매물 클레임 */}
+      {!room.owner_id && user && !claimed && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-3">
+          <p className="text-sm font-semibold text-blue-800 mb-0.5">이 매물이 내 고시원인가요?</p>
+          <p className="text-xs text-blue-600 mb-3">클레임하면 마이페이지에서 직접 수정·관리할 수 있어요</p>
+          <button onClick={claimRoom} disabled={claiming}
+            className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
+            {claiming ? '처리 중...' : '내 매물로 등록하기'}
+          </button>
+        </div>
+      )}
+      {claimed && (
+        <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-green-800">내 매물로 등록됐어요!</p>
+          <a href="/mypage" className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1.5 rounded-lg">마이페이지 →</a>
         </div>
       )}
 
