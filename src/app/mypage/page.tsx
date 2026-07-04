@@ -57,11 +57,12 @@ export default function MyPage() {
   }
 
   function loadPortOne(): Promise<void> {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       if ((window as any).PortOne) { resolve(); return }
       const script = document.createElement('script')
       script.src = 'https://cdn.portone.io/v2/browser-sdk.js'
       script.onload = () => resolve()
+      script.onerror = () => reject(new Error('PortOne SDK 로드 실패'))
       document.head.appendChild(script)
     })
   }
@@ -89,15 +90,15 @@ export default function MyPage() {
       })
       if (res?.code) {
         await supabase.from('rent_payments').update({ status: 'failed' }).eq('payment_id', paymentId)
-        alert('결제가 취소되었어요')
+        window.alert('결제가 취소되었어요')
       } else {
         await supabase.from('rent_payments').update({ status: 'completed', paid_at: new Date().toISOString() }).eq('payment_id', paymentId)
-        alert(`${(amount / 10000).toLocaleString()}만원 결제가 완료됐어요!`)
+        window.alert(`${(amount / 10000).toLocaleString()}만원 결제가 완료됐어요!`)
         fetchPayments()
       }
     } catch (e: any) {
       await supabase.from('rent_payments').update({ status: 'failed' }).eq('payment_id', paymentId)
-      alert('결제 중 오류: ' + (e?.message || '알 수 없는 오류'))
+      window.alert('결제 중 오류: ' + (e?.message || '알 수 없는 오류'))
     }
     setPayingFor(null)
     setPayPhone('')

@@ -77,6 +77,8 @@ export default function RoomDetailPage() {
     setReportLoading(false)
     setReportDone(true)
     setShowReportModal(false)
+    setReportReason('')
+    setReportNote('')
   }
 
   async function claimRoom() {

@@ -89,7 +89,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (view === 'map') fetchMapRooms()
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, keyword])
 
   useEffect(() => {
     const rooms = nearbyMode ? nearbyRooms : mapRooms
@@ -227,6 +227,8 @@ export default function HomePage() {
     if (po.max < 9999) q = q.lte('price', po.max)
     if (po.min > 0) q = q.gte('price', po.min)
     if (mealsOnly) q = q.eq('meals', true)
+    if (vacancyOnly) q = q.eq('has_vacancy', true)
+    if (petsOnly) q = q.eq('pets_allowed', true)
     if (keyword.trim()) q = q.or(`title.ilike.%${keyword.trim()}%,address.ilike.%${keyword.trim()}%`)
     const { data } = await q
     setMapRooms(data || [])
