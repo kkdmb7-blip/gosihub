@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase, Room } from '@/lib/supabase'
 import ReviewSection from '@/components/ReviewSection'
@@ -18,10 +18,33 @@ export default function RoomDetailPage() {
   const [loading, setLoading] = useState(true)
   const [photoIdx, setPhotoIdx] = useState(0)
   const [showContact, setShowContact] = useState(false)
+  const mapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (id) fetchRoom(id as string)
   }, [id])
+
+  useEffect(() => {
+    if (!room?.lat || !room?.lng || !mapRef.current) return
+    const script = document.createElement('script')
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
+    script.onload = () => {
+      window.kakao?.maps.load(() => {
+        const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
+        const map = new window.kakao.maps.Map(mapRef.current!, { center: pos, level: 4 })
+        new window.kakao.maps.Marker({ position: pos, map })
+      })
+    }
+    if (!document.querySelector(`script[src*="dapi.kakao.com/v2/maps"]`)) {
+      document.head.appendChild(script)
+    } else {
+      window.kakao?.maps.load(() => {
+        const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
+        const map = new window.kakao.maps.Map(mapRef.current!, { center: pos, level: 4 })
+        new window.kakao.maps.Marker({ position: pos, map })
+      })
+    }
+  }, [room])
 
   async function fetchRoom(roomId: string) {
     const { data } = await supabase.from('rooms').select('*').eq('id', roomId).single()
@@ -150,6 +173,15 @@ export default function RoomDetailPage() {
       {room.move_in_date && (
         <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-3">
           <p className="text-sm text-green-800 font-medium">입주 가능일: {room.move_in_date}</p>
+        </div>
+      )}
+
+      {/* 위치 지도 */}
+      {room.lat && room.lng && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-3 shadow-sm">
+          <h2 className="text-sm font-bold text-gray-700 mb-3">위치</h2>
+          <div ref={mapRef} className="w-full rounded-xl overflow-hidden" style={{ height: 200 }} />
+          <p className="text-xs text-gray-400 mt-2">{room.address}</p>
         </div>
       )}
 

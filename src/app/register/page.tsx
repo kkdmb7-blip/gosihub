@@ -94,62 +94,80 @@ export default function RegisterPage() {
     document.head.appendChild(script)
   }
 
+  function validateStep(n: number): string | null {
+    if (n === 1) {
+      if (!form.title.trim()) return '제목을 입력해주세요'
+      if (!form.address) return '주소를 검색해주세요'
+      if (!form.price || parseInt(form.price) <= 0) return '월세를 입력해주세요'
+    }
+    if (n === 3) {
+      if (!form.owner_phone.trim()) return '연락처를 입력해주세요'
+    }
+    return null
+  }
+
+  function goStep(n: number) {
+    const err = validateStep(step)
+    if (err) { alert(err); return }
+    setStep(n)
+  }
+
   async function submit() {
-    if (!form.title || !form.address || !form.price || !form.owner_phone) {
-      alert('필수 항목을 모두 입력해주세요')
-      return
-    }
+    const err = validateStep(3)
+    if (err) { alert(err); return }
     setLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { alert('로그인이 필요합니다'); return }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { alert('로그인이 필요합니다'); setLoading(false); return }
-
-    let photoUrls: string[] = []
-    for (const file of photos) {
-      const ext = file.name.split('.').pop()
-      const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-      const { data, error: uploadError } = await supabase.storage.from('room-photos').upload(path, file)
-      if (uploadError) { console.error('사진 업로드 실패:', uploadError.message) }
-      if (data) {
-        const { data: urlData } = supabase.storage.from('room-photos').getPublicUrl(path)
-        photoUrls.push(urlData.publicUrl)
+      let photoUrls: string[] = []
+      for (const file of photos) {
+        const ext = file.name.split('.').pop()
+        const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+        const { data, error: uploadError } = await supabase.storage.from('room-photos').upload(path, file)
+        if (uploadError) { console.error('사진 업로드 실패:', uploadError.message) }
+        if (data) {
+          const { data: urlData } = supabase.storage.from('room-photos').getPublicUrl(path)
+          photoUrls.push(urlData.publicUrl)
+        }
       }
+
+      const { error } = await supabase.from('rooms').insert({
+        owner_id: user.id,
+        title: form.title,
+        type: form.type,
+        price: parseInt(form.price),
+        deposit: parseInt(form.deposit) || 0,
+        address: form.address,
+        address_detail: form.address_detail,
+        lat: form.lat || null,
+        lng: form.lng || null,
+        description: form.description,
+        gender: form.gender,
+        area: form.area ? parseInt(form.area) : null,
+        floor: form.floor ? parseInt(form.floor) : null,
+        total_floors: form.total_floors ? parseInt(form.total_floors) : null,
+        move_in_date: form.move_in_date || null,
+        owner_name: form.owner_name,
+        owner_phone: form.owner_phone,
+        kakao_open_chat: (form as any).kakao_open_chat || null,
+        amenities: form.amenities,
+        meals: form.amenities.includes('meals'),
+        internet: form.amenities.includes('internet'),
+        parking: form.amenities.includes('parking'),
+        cctv: form.amenities.includes('cctv'),
+        laundry: form.amenities.includes('laundry'),
+        photos: photoUrls,
+        is_active: true,
+        last_confirmed_at: new Date().toISOString(),
+      })
+
+      if (error) { alert('등록 중 오류가 발생했어요: ' + error.message); return }
+      alert('매물이 등록되었습니다!')
+      router.push('/')
+    } finally {
+      setLoading(false)
     }
-
-    const { error } = await supabase.from('rooms').insert({
-      owner_id: user.id,
-      title: form.title,
-      type: form.type,
-      price: parseInt(form.price),
-      deposit: parseInt(form.deposit) || 0,
-      address: form.address,
-      address_detail: form.address_detail,
-      lat: form.lat,
-      lng: form.lng,
-      description: form.description,
-      gender: form.gender,
-      area: form.area ? parseInt(form.area) : null,
-      floor: form.floor ? parseInt(form.floor) : null,
-      total_floors: form.total_floors ? parseInt(form.total_floors) : null,
-      move_in_date: form.move_in_date || null,
-      owner_name: form.owner_name,
-      owner_phone: form.owner_phone,
-      kakao_open_chat: (form as any).kakao_open_chat || null,
-      amenities: form.amenities,
-      meals: form.amenities.includes('meals'),
-      internet: form.amenities.includes('internet'),
-      parking: form.amenities.includes('parking'),
-      cctv: form.amenities.includes('cctv'),
-      laundry: form.amenities.includes('laundry'),
-      photos: photoUrls,
-      is_active: true,
-      last_confirmed_at: new Date().toISOString(),
-    })
-
-    setLoading(false)
-    if (error) { alert('등록 중 오류가 발생했어요: ' + error.message); return }
-    alert('매물이 등록되었습니다!')
-    router.push('/')
   }
 
   const inputCls = "w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm focus:outline-none focus:border-blue-400 bg-white"
@@ -225,7 +243,7 @@ export default function RegisterPage() {
             <input className={inputCls} type="date" value={form.move_in_date} onChange={e => set('move_in_date', e.target.value)} />
           </div>
 
-          <button onClick={() => setStep(2)}
+          <button onClick={() => goStep(2)}
             className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm">
             다음 →
           </button>
@@ -298,7 +316,7 @@ export default function RegisterPage() {
 
           <div className="flex gap-2">
             <button onClick={() => setStep(1)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3.5 rounded-xl text-sm">← 이전</button>
-            <button onClick={() => setStep(3)} className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm">다음 →</button>
+            <button onClick={() => goStep(3)} className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm">다음 →</button>
           </div>
         </div>
       )}

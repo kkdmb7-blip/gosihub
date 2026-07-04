@@ -138,11 +138,11 @@ districts.forEach(dist => {
     const titleList = titles_by_type[type]
     const title = `${neighborhood} ${rand(titleList)}`
     const gender = rand(genders)
-    const price = type === '쉐어하우스' ? randInt(25, 65) * 10000 :
-                  type === '하숙' ? randInt(35, 60) * 10000 :
-                  type === '원룸텔' ? randInt(30, 80) * 10000 :
-                  randInt(20, 55) * 10000
-    const deposit = randInt(0, 5) * 100000
+    const price = type === '쉐어하우스' ? randInt(25, 65) :
+                  type === '하숙' ? randInt(35, 60) :
+                  type === '원룸텔' ? randInt(30, 80) :
+                  randInt(20, 55)
+    const deposit = randInt(0, 5) * 10
     const meals = type === '하숙' ? true : Math.random() > 0.7
     const ams = randAmenities()
     const confirmed_days_ago = randInt(0, 25)

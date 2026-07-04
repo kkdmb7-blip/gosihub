@@ -174,12 +174,12 @@ export default function HomePage() {
         )}
 
         {view === 'map' && (
-          <div className="flex gap-3">
-            <div className="w-72 flex-shrink-0 overflow-y-auto space-y-2 pr-1" style={{ maxHeight: 620 }}>
-              {filtered.map(room => <RoomCard key={room.id} room={room} />)}
-            </div>
-            <div className="flex-1 rounded-2xl overflow-hidden border border-gray-100" style={{ height: 620 }}>
+          <div>
+            <div className="rounded-2xl overflow-hidden border border-gray-100 mb-3" style={{ height: 400 }}>
               <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {filtered.map(room => <RoomCard key={room.id} room={room} />)}
             </div>
           </div>
         )}
