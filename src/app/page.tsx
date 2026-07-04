@@ -32,6 +32,7 @@ export default function HomePage() {
   const mapRef = useRef<HTMLDivElement>(null)
   const kakaoMap = useRef<any>(null)
   const markersRef = useRef<any[]>([])
+  const mapRoomsRef = useRef<Room[]>([])
 
   const [rooms, setRooms] = useState<Room[]>([])
   const [total, setTotal] = useState(0)
@@ -55,7 +56,7 @@ export default function HomePage() {
   const [userPos, setUserPos] = useState<{lat: number, lng: number} | null>(null)
   const [mapRooms, setMapRooms] = useState<Room[]>([])
   const [visibleRooms, setVisibleRooms] = useState<Room[]>([])
-  const [mapBoundsMode, setMapBoundsMode] = useState(false)
+  const [mapBoundsMode, setMapBoundsMode] = useState(true)
   const [sortBy, setSortBy] = useState<'recent' | 'price_asc' | 'price_desc' | 'area'>('recent')
 
   const [user, setUser] = useState<any>(null)
@@ -91,11 +92,12 @@ export default function HomePage() {
   }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword])
 
   useEffect(() => {
+    mapRoomsRef.current = nearbyMode ? nearbyRooms : mapRooms
     if (kakaoMap.current) {
       renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
       filterByBounds()
     }
-  }, [mapRooms, nearbyRooms])
+  }, [mapRooms, nearbyRooms, nearbyMode])
 
   function buildQuery(page: number) {
     const orderMap: Record<string, { col: string; asc: boolean }> = {
@@ -234,7 +236,7 @@ export default function HomePage() {
     const bounds = kakaoMap.current.getBounds()
     const sw = bounds.getSouthWest()
     const ne = bounds.getNorthEast()
-    const filtered = mapRooms.filter((r: Room) =>
+    const filtered = mapRoomsRef.current.filter((r: Room) =>
       r.lat >= sw.getLat() && r.lat <= ne.getLat() &&
       r.lng >= sw.getLng() && r.lng <= ne.getLng()
     )
