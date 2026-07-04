@@ -52,6 +52,8 @@ export default function HomePage() {
   const [nearbyRooms, setNearbyRooms] = useState<Room[]>([])
   const [userPos, setUserPos] = useState<{lat: number, lng: number} | null>(null)
   const [mapRooms, setMapRooms] = useState<Room[]>([])
+  const [visibleRooms, setVisibleRooms] = useState<Room[]>([])
+  const [mapBoundsMode, setMapBoundsMode] = useState(false)
 
   const [user, setUser] = useState<any>(null)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
@@ -86,7 +88,10 @@ export default function HomePage() {
   }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword])
 
   useEffect(() => {
-    if (kakaoMap.current) renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
+    if (kakaoMap.current) {
+      renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
+      filterByBounds()
+    }
   }, [mapRooms, nearbyRooms])
 
   function buildQuery(page: number) {
@@ -212,10 +217,23 @@ export default function HomePage() {
     if (kakaoMap.current) renderMarkers(data || [])
   }
 
+  function filterByBounds() {
+    if (!kakaoMap.current) return
+    const bounds = kakaoMap.current.getBounds()
+    const sw = bounds.getSouthWest()
+    const ne = bounds.getNorthEast()
+    const filtered = mapRooms.filter((r: Room) =>
+      r.lat >= sw.getLat() && r.lat <= ne.getLat() &&
+      r.lng >= sw.getLng() && r.lng <= ne.getLng()
+    )
+    setVisibleRooms(filtered)
+  }
+
   function createMap() {
     if (!mapRef.current || kakaoMap.current) return
     const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
     kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
+    window.kakao.maps.event.addListener(kakaoMap.current, 'bounds_changed', filterByBounds)
     renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
   }
 
@@ -376,18 +394,36 @@ export default function HomePage() {
 
         {view === 'map' && (
           <div>
-            <div className="rounded-2xl overflow-hidden border border-gray-100 mb-1" style={{ height: 400 }}>
+            <div className="relative rounded-2xl overflow-hidden border border-gray-100 mb-2" style={{ height: 400 }}>
               <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+              {/* 지도 내 매물만 토글 */}
+              <button
+                onClick={() => setMapBoundsMode(p => !p)}
+                className={`absolute bottom-3 left-1/2 -translate-x-1/2 z-10 px-4 py-2 rounded-full text-xs font-bold shadow-md border transition-all whitespace-nowrap ${
+                  mapBoundsMode
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-700 border-gray-200'
+                }`}
+              >
+                {mapBoundsMode ? `✓ 이 지도 내 ${visibleRooms.length}개` : '지도 내 매물만 보기'}
+              </button>
             </div>
-            <p className="text-xs text-gray-400 mb-3 text-right">지도에 {mapDisplayRooms.length}개 표시됨</p>
+            <p className="text-xs text-gray-400 mb-3 text-right">
+              {mapBoundsMode
+                ? `지도 영역 내 ${visibleRooms.length}개 / 전체 ${mapDisplayRooms.length}개`
+                : `지도에 ${mapDisplayRooms.length}개 핀 표시`}
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {displayRooms.map(room => (
+              {(mapBoundsMode ? visibleRooms : displayRooms).map(room => (
                 <RoomCard key={room.id} room={room}
                   isFavorited={favorites.has(room.id)}
                   onToggleFavorite={toggleFavorite} />
               ))}
             </div>
-            {hasMore && (
+            {!mapBoundsMode && visibleRooms.length === 0 && (
+              <div />
+            )}
+            {hasMore && !mapBoundsMode && (
               <div className="text-center mt-4">
                 <button onClick={loadMore} disabled={loadingMore}
                   className="px-8 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
