@@ -24,6 +24,7 @@ export default function RoomDetailPage() {
   const [favorited, setFavorited] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [subway, setSubway] = useState<{ name: string; minutes: number } | null>(null)
+  const [nearbyPlaces, setNearbyPlaces] = useState<{ category: string; name: string; meters: number }[]>([])
   const [claiming, setClaiming] = useState(false)
   const [claimed, setClaimed] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
@@ -50,6 +51,7 @@ export default function RoomDetailPage() {
     if (!room?.lat || !room?.lng || !mapRef.current) return
     initDetailMap()
     fetchSubway(room.lat, room.lng)
+    fetchNearbyPlaces(room.lat, room.lng)
   }, [room])
 
   async function fetchRoom(roomId: string) {
@@ -107,6 +109,47 @@ export default function RoomDetailPage() {
       await supabase.from('favorites').insert({ room_id: id as string, user_id: user.id })
       setFavorited(true)
     }
+  }
+
+  async function fetchNearbyPlaces(lat: number, lng: number) {
+    const cats = [
+      { code: 'CS2', label: '편의점' },
+      { code: 'CE7', label: '카페' },
+      { code: 'HP8', label: '병원' },
+      { code: 'MT1', label: '마트' },
+    ]
+    const key = process.env.NEXT_PUBLIC_KAKAO_REST_KEY
+    const fetchCat = async (code: string, label: string) => {
+      try {
+        const res = await fetch(
+          `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=${code}&x=${lng}&y=${lat}&radius=500&sort=distance&size=1`,
+          { headers: { Authorization: `KakaoAK ${key}` } }
+        )
+        const data = await res.json()
+        if (data.documents?.[0]) {
+          return { category: label, name: data.documents[0].place_name, meters: parseInt(data.documents[0].distance) || 0 }
+        }
+      } catch {}
+      return null
+    }
+    const fetchKeyword = async (query: string, label: string) => {
+      try {
+        const res = await fetch(
+          `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&x=${lng}&y=${lat}&radius=500&sort=distance&size=1`,
+          { headers: { Authorization: `KakaoAK ${key}` } }
+        )
+        const data = await res.json()
+        if (data.documents?.[0]) {
+          return { category: label, name: data.documents[0].place_name, meters: parseInt(data.documents[0].distance) || 0 }
+        }
+      } catch {}
+      return null
+    }
+    const results = await Promise.all([
+      ...cats.map(c => fetchCat(c.code, c.label)),
+      fetchKeyword('세탁소', '세탁소'),
+    ])
+    setNearbyPlaces(results.filter(Boolean) as any)
   }
 
   async function fetchSubway(lat: number, lng: number) {
@@ -356,6 +399,34 @@ export default function RoomDetailPage() {
       {room.move_in_date && (
         <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-3">
           <p className="text-sm text-green-800 font-medium">입주 가능일: {room.move_in_date}</p>
+        </div>
+      )}
+
+      {/* 주변 편의시설 */}
+      {nearbyPlaces.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-3 shadow-sm">
+          <h2 className="text-sm font-bold text-gray-700 mb-3">
+            주변 편의시설
+            <span className="text-xs font-normal text-gray-400 ml-1.5">500m 이내</span>
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {nearbyPlaces.map((p, i) => (
+              <div key={i} className="flex items-center gap-2.5 bg-gray-50 rounded-xl p-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-blue-600">
+                    {p.category === '편의점' ? '편' : p.category === '카페' ? '카' : p.category === '병원' ? '의' : p.category === '마트' ? '마' : '세'}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-gray-400">{p.category}</p>
+                  <p className="text-xs font-semibold text-gray-700 truncate">{p.name}</p>
+                  <p className="text-xs font-medium text-blue-600">
+                    {p.meters < 1000 ? `${p.meters}m` : `${(p.meters / 1000).toFixed(1)}km`}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
