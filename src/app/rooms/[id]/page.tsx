@@ -216,7 +216,16 @@ export default function RoomDetailPage() {
       {/* 핵심 정보 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-3 shadow-sm">
         <div className="flex items-start justify-between mb-2">
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full badge-${room.type}`}>{room.type}</span>
+          <div className="flex items-center gap-1.5">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full badge-${room.type}`}>{room.type}</span>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              room.has_vacancy === false
+                ? 'bg-gray-800 text-white'
+                : 'bg-emerald-100 text-emerald-700'
+            }`}>
+              {room.has_vacancy === false ? '마감' : '빈방 있음'}
+            </span>
+          </div>
           <span className={`text-xs px-2 py-0.5 rounded-full ${daysSince <= 3 ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-500'}`}>
             {daysSince <= 3 ? '최신 등록' : `${daysSince}일 전 확인`}
           </span>

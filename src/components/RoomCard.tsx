@@ -41,11 +41,14 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
               </svg>
             </div>
           )}
-          {freshness && (
-            <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              {freshness}
-            </span>
-          )}
+          {/* 빈방 여부 뱃지 */}
+          <span className={`absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full ${
+            room.has_vacancy === false
+              ? 'bg-gray-800/80 text-white'
+              : freshness ? 'bg-blue-600 text-white' : 'hidden'
+          }`}>
+            {room.has_vacancy === false ? '마감' : freshness}
+          </span>
           <span className={`absolute top-2 right-10 text-xs font-bold px-2 py-0.5 rounded-full badge-${room.type}`}>
             {room.type}
           </span>

@@ -63,6 +63,12 @@ export default function MyPage() {
     setRooms(prev => prev.map(r => r.id === room.id ? { ...r, is_active: !r.is_active } : r))
   }
 
+  async function toggleVacancy(room: Room) {
+    const next = !room.has_vacancy
+    await supabase.from('rooms').update({ has_vacancy: next }).eq('id', room.id)
+    setRooms(prev => prev.map(r => r.id === room.id ? { ...r, has_vacancy: next } : r))
+  }
+
   async function confirmStillAvailable(room: Room) {
     await supabase.from('rooms').update({ last_confirmed_at: new Date().toISOString() }).eq('id', room.id)
     setRooms(prev => prev.map(r => r.id === room.id ? { ...r, last_confirmed_at: new Date().toISOString() } : r))
@@ -167,7 +173,17 @@ export default function MyPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-2 mt-3">
+                    {/* 빈방 토글 */}
+                    <button onClick={() => toggleVacancy(room)}
+                      className={`w-full mt-3 text-xs font-bold py-2 rounded-xl border transition-all ${
+                        room.has_vacancy
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                          : 'bg-gray-100 border-gray-200 text-gray-500'
+                      }`}>
+                      {room.has_vacancy ? '✓ 빈방 있음 — 탭하면 마감 처리' : '마감 (빈방 없음) — 탭하면 빈방으로 변경'}
+                    </button>
+
+                    <div className="flex gap-2 mt-2">
                       <button onClick={() => toggleActive(room)}
                         className="flex-1 text-xs border border-gray-200 text-gray-600 py-2 rounded-lg font-medium">
                         {room.is_active ? '숨기기' : '게시하기'}

@@ -51,6 +51,7 @@ export interface Room {
   floor?: number
   total_floors?: number
   move_in_date?: string
+  has_vacancy: boolean
 }
 
 export interface User {

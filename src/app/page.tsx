@@ -45,6 +45,7 @@ export default function HomePage() {
   const [selectedGender, setSelectedGender] = useState<GenderType | ''>('')
   const [priceIdx, setPriceIdx] = useState(0)
   const [mealsOnly, setMealsOnly] = useState(false)
+  const [vacancyOnly, setVacancyOnly] = useState(false)
   const [selectedRegion, setSelectedRegion] = useState('')
 
   const [locating, setLocating] = useState(false)
@@ -65,7 +66,7 @@ export default function HomePage() {
     setCurrentPage(0)
     setRooms([])
     fetchRooms(0, false)
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword, nearbyMode, sortBy])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, keyword, nearbyMode, sortBy])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -120,6 +121,7 @@ export default function HomePage() {
     if (po.max < 9999) q = q.lte('price', po.max)
     if (po.min > 0) q = q.gte('price', po.min)
     if (mealsOnly) q = q.eq('meals', true)
+    if (vacancyOnly) q = q.eq('has_vacancy', true)
     if (keyword.trim()) q = q.or(`title.ilike.%${keyword.trim()}%,address.ilike.%${keyword.trim()}%`)
 
     return q
@@ -275,7 +277,7 @@ export default function HomePage() {
 
   const displayRooms = nearbyMode ? nearbyRooms : rooms
   const mapDisplayRooms = nearbyMode ? nearbyRooms : mapRooms
-  const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0)
+  const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0) + (vacancyOnly ? 1 : 0)
   const hasMore = !nearbyMode && rooms.length < total
 
   return (
@@ -334,6 +336,10 @@ export default function HomePage() {
               className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${mealsOnly ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
               식사제공
             </button>
+            <button onClick={() => setVacancyOnly(!vacancyOnly)}
+              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${vacancyOnly ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+              빈방만
+            </button>
             <div className="w-px h-4 bg-gray-200 mx-0.5" />
             <select value={nearbyMode ? 'nearby' : sortBy} onChange={e => { if (!nearbyMode) setSortBy(e.target.value as any) }}
               disabled={nearbyMode}
@@ -345,7 +351,7 @@ export default function HomePage() {
               <option value="area">면적 큰순</option>
             </select>
             {activeFilters > 0 && (
-              <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false) }}
+              <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false); setVacancyOnly(false) }}
                 className="text-xs px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100 font-medium">
                 초기화 {activeFilters}
               </button>
