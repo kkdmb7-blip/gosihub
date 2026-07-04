@@ -295,10 +295,10 @@ export default function RoomDetailPage() {
       )}
 
       {/* 사진 갤러리 */}
-      <div className="relative w-full rounded-2xl overflow-hidden bg-gray-100 mb-4" style={{ height: 280 }}>
+      <div className="relative w-full rounded-2xl overflow-hidden bg-black mb-4" style={{ height: 280 }}>
         {filteredPhotos.length > 0 ? (
           <>
-            <img src={filteredPhotos[photoIdx] || filteredPhotos[0]} alt="" className="w-full h-full object-cover" />
+            <img src={filteredPhotos[photoIdx] || filteredPhotos[0]} alt="" className="w-full h-full object-contain" />
             {filteredPhotos.length > 1 && (
               <>
                 <button onClick={() => setPhotoIdx(i => Math.max(0, i - 1))}
