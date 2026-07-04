@@ -25,6 +25,9 @@ export default function RoomDetailPage() {
   const [subway, setSubway] = useState<{ name: string; minutes: number } | null>(null)
   const [claiming, setClaiming] = useState(false)
   const [claimed, setClaimed] = useState(false)
+  const [showClaimModal, setShowClaimModal] = useState(false)
+  const [claimPhone, setClaimPhone] = useState('')
+  const [claimError, setClaimError] = useState('')
   const mapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,11 +59,21 @@ export default function RoomDetailPage() {
 
   async function claimRoom() {
     if (!user) { window.location.href = '/api/auth/kakao'; return }
-    if (!confirm('이 매물을 내 매물로 등록할까요?\n마이페이지에서 수정/관리할 수 있게 됩니다.')) return
+    if (!room) return
+    setClaimError('')
+    const normalize = (p: string) => p.replace(/\D/g, '')
+    const inputNorm = normalize(claimPhone)
+    const dbNorm = normalize(room.owner_phone || '')
+    if (!inputNorm) { setClaimError('연락처를 입력해주세요'); return }
+    if (!dbNorm || inputNorm !== dbNorm) {
+      setClaimError('등록된 연락처와 일치하지 않아요. 다시 확인해주세요.')
+      return
+    }
     setClaiming(true)
     const { error } = await supabase.from('rooms').update({ owner_id: user.id }).eq('id', id as string).is('owner_id', null)
     setClaiming(false)
-    if (error) { alert('오류가 발생했어요: ' + error.message); return }
+    if (error) { setClaimError('오류가 발생했어요: ' + error.message); return }
+    setShowClaimModal(false)
     setClaimed(true)
     setRoom(prev => prev ? { ...prev, owner_id: user.id } : prev)
   }
@@ -285,10 +298,10 @@ export default function RoomDetailPage() {
       {!room.owner_id && user && !claimed && (
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-3">
           <p className="text-sm font-semibold text-blue-800 mb-0.5">이 매물이 내 고시원인가요?</p>
-          <p className="text-xs text-blue-600 mb-3">클레임하면 마이페이지에서 직접 수정·관리할 수 있어요</p>
-          <button onClick={claimRoom} disabled={claiming}
-            className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
-            {claiming ? '처리 중...' : '내 매물로 등록하기'}
+          <p className="text-xs text-blue-600 mb-3">연락처 인증 후 마이페이지에서 직접 수정·관리할 수 있어요</p>
+          <button onClick={() => { setShowClaimModal(true); setClaimPhone(''); setClaimError('') }}
+            className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm">
+            내 매물로 등록하기
           </button>
         </div>
       )}
@@ -296,6 +309,51 @@ export default function RoomDetailPage() {
         <div className="bg-green-50 border border-green-100 rounded-2xl p-4 mb-3 flex items-center justify-between">
           <p className="text-sm font-semibold text-green-800">내 매물로 등록됐어요!</p>
           <a href="/mypage" className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1.5 rounded-lg">마이페이지 →</a>
+        </div>
+      )}
+
+      {/* 클레임 인증 모달 */}
+      {showClaimModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowClaimModal(false)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 pb-10" onClick={e => e.stopPropagation()}>
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <h3 className="text-base font-bold text-gray-900 mb-1">연락처 인증</h3>
+            <p className="text-sm text-gray-500 mb-1">이 매물에 등록된 연락처를 입력하세요</p>
+            {room.owner_phone && (() => {
+              const d = room.owner_phone.replace(/\D/g, '')
+              const prefix = d.startsWith('02') ? d.slice(0, 2) : d.slice(0, 3)
+              const suffix = d.slice(-4)
+              const hint = `${prefix}-****-${suffix}`
+              return (
+                <p className="text-xs text-blue-600 mb-4 bg-blue-50 rounded-lg px-3 py-2">
+                  힌트: {hint}
+                </p>
+              )
+            })()}
+            {!room.owner_phone && (
+              <p className="text-xs text-amber-600 mb-4 bg-amber-50 rounded-lg px-3 py-2">
+                이 매물은 등록된 연락처가 없어 인증이 어려워요. 관리자에게 문의해주세요.
+              </p>
+            )}
+            <input
+              type="tel"
+              value={claimPhone}
+              onChange={e => { setClaimPhone(e.target.value); setClaimError('') }}
+              placeholder={room.owner_phone?.startsWith('0') && !room.owner_phone?.startsWith('010') ? '02-0000-0000' : '010-0000-0000'}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-400 mb-2"
+            />
+            {claimError && <p className="text-xs text-red-500 mb-3">{claimError}</p>}
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => setShowClaimModal(false)}
+                className="flex-1 border border-gray-200 text-gray-500 font-medium py-3 rounded-xl text-sm">
+                취소
+              </button>
+              <button onClick={claimRoom} disabled={claiming}
+                className="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50">
+                {claiming ? '확인 중...' : '인증 후 등록'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
