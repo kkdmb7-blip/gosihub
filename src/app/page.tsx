@@ -32,7 +32,17 @@ export default function HomePage() {
 
   useEffect(() => { fetchRooms() }, [])
   useEffect(() => { applyFilter() }, [rooms, keyword, selectedTypes, selectedGender, priceIdx, mealsOnly])
-  useEffect(() => { if (view === 'map') initMap() }, [view])
+  useEffect(() => {
+    if (view === 'map') {
+      // mapRef가 DOM에 마운트된 후 실행되도록 setTimeout 사용
+      const timer = setTimeout(initMap, 100)
+      return () => clearTimeout(timer)
+    } else {
+      // 목록으로 돌아오면 map 인스턴스 초기화 (재진입 시 재생성)
+      kakaoMap.current = null
+      markersRef.current = []
+    }
+  }, [view])
   useEffect(() => { if (kakaoMap.current) renderMarkers(filtered) }, [filtered])
 
   async function fetchRooms() {
@@ -64,18 +74,28 @@ export default function HomePage() {
     setSelectedTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
   }
 
+  function createMap() {
+    if (!mapRef.current || kakaoMap.current) return
+    const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
+    kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
+    renderMarkers(filtered)
+  }
+
   function initMap() {
-    if (kakaoMap.current) return
-    const script = document.createElement('script')
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
-    script.onload = () => {
-      window.kakao.maps.load(() => {
-        if (!mapRef.current) return
-        const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
-        kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
-        renderMarkers(filtered)
-      })
+    if (window.kakao?.maps) {
+      createMap()
+      return
     }
+    const existingScript = document.getElementById('kakao-map-script')
+    if (existingScript) {
+      existingScript.addEventListener('load', createMap)
+      return
+    }
+    const script = document.createElement('script')
+    script.id = 'kakao-map-script'
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
+    script.onload = () => window.kakao.maps.load(createMap)
+    script.onerror = () => console.error('카카오 지도 스크립트 로드 실패')
     document.head.appendChild(script)
   }
 
