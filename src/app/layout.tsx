@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import FeedbackButton from "@/components/FeedbackButton";
 
 export const metadata: Metadata = {
   title: "고시허브 - 고시원·고시텔·원룸텔 검색",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1">{children}</main>
+        <FeedbackButton />
       </body>
     </html>
   );
