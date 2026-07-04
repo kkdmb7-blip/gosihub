@@ -133,6 +133,46 @@ function CompareContent() {
             render: (r: Room) => <Cell value={(r as any).pets_allowed ? '가능' : '불가'} />
           },
           {
+            label: '총방수',
+            render: (r: Room) => <Cell value={(r as any).total_rooms != null ? `${(r as any).total_rooms}개` : null} />
+          },
+          {
+            label: '공실수',
+            render: (r: Room) => <Cell value={(r as any).vacancy_count != null ? `${(r as any).vacancy_count}개` : null} />
+          },
+          {
+            label: '방향',
+            render: (r: Room) => <Cell value={(r as any).direction || null} />
+          },
+          {
+            label: '건축년도',
+            render: (r: Room) => <Cell value={(r as any).building_year ? `${(r as any).building_year}년` : null} />
+          },
+          {
+            label: '개별화장실',
+            render: (r: Room) => <Cell value={(r as any).private_bathroom ? '있음' : '공용'} />
+          },
+          {
+            label: '개별주방',
+            render: (r: Room) => <Cell value={(r as any).private_kitchen ? '있음' : '공용'} />
+          },
+          {
+            label: '엘리베이터',
+            render: (r: Room) => <Cell value={(r as any).elevator ? '있음' : '없음'} />
+          },
+          {
+            label: '공과금 포함',
+            render: (r: Room) => <Cell value={(r as any).utilities_included ? '포함' : '별도'} />
+          },
+          {
+            label: '여성안심',
+            render: (r: Room) => <Cell value={(r as any).female_safe ? '해당' : '일반'} />
+          },
+          {
+            label: '통금',
+            render: (r: Room) => <Cell value={(r as any).no_curfew ? '없음' : '있음'} />
+          },
+          {
             label: '층수',
             render: (r: Room) => <Cell value={r.floor ? `${r.floor}층` : null} />
           },

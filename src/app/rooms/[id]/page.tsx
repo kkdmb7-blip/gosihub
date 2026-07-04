@@ -389,16 +389,73 @@ export default function RoomDetailPage() {
             </div>
           ))}
         </div>
-        {((room as any).min_contract || (room as any).pets_allowed) && (
-          <div className="flex gap-2 mb-3">
-            {(room as any).min_contract && (
-              <span className="text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100 font-medium">최소계약 {(room as any).min_contract}</span>
+        {/* 방/공실/건물 정보 */}
+        {((room as any).total_rooms || (room as any).vacancy_count != null || (room as any).building_year || (room as any).direction) && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+            {(room as any).total_rooms != null && (
+              <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                <p className="text-xs text-gray-400 mb-0.5">총 방수</p>
+                <p className="text-sm font-semibold text-gray-800">{(room as any).total_rooms}개</p>
+              </div>
             )}
-            {(room as any).pets_allowed && (
-              <span className="text-xs bg-amber-50 text-amber-700 px-3 py-1.5 rounded-full border border-amber-100 font-medium">반려동물 가능</span>
+            {(room as any).vacancy_count != null && (
+              <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
+                <p className="text-xs text-emerald-600 mb-0.5">현재 공실</p>
+                <p className="text-sm font-semibold text-emerald-700">{(room as any).vacancy_count}개</p>
+              </div>
+            )}
+            {(room as any).direction && (
+              <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                <p className="text-xs text-gray-400 mb-0.5">방향</p>
+                <p className="text-sm font-semibold text-gray-800">{(room as any).direction}</p>
+              </div>
+            )}
+            {(room as any).building_year && (
+              <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+                <p className="text-xs text-gray-400 mb-0.5">건축년도</p>
+                <p className="text-sm font-semibold text-gray-800">{(room as any).building_year}년</p>
+              </div>
             )}
           </div>
         )}
+
+        {/* 방 옵션 뱃지 */}
+        {(() => {
+          const opts = [
+            { key: 'has_window', label: '창문 있음', color: 'sky' },
+            { key: 'private_bathroom', label: '개별 화장실', color: 'indigo' },
+            { key: 'private_kitchen', label: '개별 주방', color: 'indigo' },
+            { key: 'elevator', label: '엘리베이터', color: 'gray' },
+            { key: 'utilities_included', label: '공과금 포함', color: 'green' },
+            { key: 'female_safe', label: '여성 안심', color: 'pink' },
+            { key: 'has_cafeteria', label: '자체 식당', color: 'orange' },
+            { key: 'no_curfew', label: '통금 없음', color: 'purple' },
+            { key: 'smoking_allowed', label: '흡연 가능', color: 'gray' },
+            { key: 'pets_allowed', label: '반려동물 가능', color: 'amber' },
+          ].filter(o => (room as any)[o.key])
+          const showMinContract = (room as any).min_contract
+          if (opts.length === 0 && !showMinContract) return null
+          const cmap: Record<string, string> = {
+            sky: 'bg-sky-50 text-sky-700 border-sky-100',
+            indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+            gray: 'bg-gray-50 text-gray-600 border-gray-100',
+            green: 'bg-green-50 text-green-700 border-green-100',
+            pink: 'bg-pink-50 text-pink-700 border-pink-100',
+            orange: 'bg-orange-50 text-orange-700 border-orange-100',
+            purple: 'bg-purple-50 text-purple-700 border-purple-100',
+            amber: 'bg-amber-50 text-amber-700 border-amber-100',
+          }
+          return (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {showMinContract && (
+                <span className="text-xs bg-purple-50 text-purple-700 px-3 py-1.5 rounded-full border border-purple-100 font-medium">최소계약 {(room as any).min_contract}</span>
+              )}
+              {opts.map(o => (
+                <span key={o.key} className={`text-xs px-3 py-1.5 rounded-full border font-medium ${cmap[o.color]}`}>{o.label}</span>
+              ))}
+            </div>
+          )
+        })()}
 
         {room.amenities?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

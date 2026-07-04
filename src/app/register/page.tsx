@@ -6,6 +6,7 @@ import { supabase, RoomType, GenderType } from '@/lib/supabase'
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
 const MIN_CONTRACTS = ['1개월', '3개월', '6개월', '1년']
+const DIRECTIONS = ['남향', '동향', '서향', '북향', '남동향', '남서향']
 const PHOTO_CATS = ['개인방', '화장실', '주방', '세탁실', '복도', '외관']
 const AMENITIES = [
   { key: 'wifi', label: 'Wi-Fi' },
@@ -51,6 +52,19 @@ export default function RegisterPage() {
     min_contract: '',
     pets_allowed: false,
     video_url: '',
+    total_rooms: '',
+    vacancy_count: '',
+    has_window: true,
+    private_bathroom: false,
+    private_kitchen: false,
+    direction: '',
+    elevator: false,
+    building_year: '',
+    utilities_included: false,
+    female_safe: false,
+    smoking_allowed: false,
+    has_cafeteria: false,
+    no_curfew: true,
     owner_name: '',
     owner_phone: '',
     amenities: [] as string[],
@@ -171,6 +185,19 @@ export default function RegisterPage() {
         min_contract: form.min_contract || null,
         pets_allowed: form.pets_allowed,
         video_url: (form as any).video_url || null,
+        total_rooms: form.total_rooms ? parseInt(form.total_rooms) : null,
+        vacancy_count: form.vacancy_count ? parseInt(form.vacancy_count) : null,
+        has_window: form.has_window,
+        private_bathroom: form.private_bathroom,
+        private_kitchen: form.private_kitchen,
+        direction: form.direction || null,
+        elevator: form.elevator,
+        building_year: form.building_year ? parseInt(form.building_year) : null,
+        utilities_included: form.utilities_included,
+        female_safe: form.female_safe,
+        smoking_allowed: form.smoking_allowed,
+        has_cafeteria: form.has_cafeteria,
+        no_curfew: form.no_curfew,
         owner_name: form.owner_name,
         owner_phone: form.owner_phone,
         kakao_open_chat: (form as any).kakao_open_chat || null,
@@ -330,12 +357,56 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelCls}>총 방수</label>
+              <input className={inputCls} type="number" placeholder="30" value={form.total_rooms} onChange={e => set('total_rooms', e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls}>공실수</label>
+              <input className={inputCls} type="number" placeholder="5" value={form.vacancy_count} onChange={e => set('vacancy_count', e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls}>건축년도</label>
+              <input className={inputCls} type="number" placeholder="2015" value={form.building_year} onChange={e => set('building_year', e.target.value)} />
+            </div>
+          </div>
+
           <div>
-            <label className={labelCls}>반려동물</label>
-            <button type="button" onClick={() => set('pets_allowed', !form.pets_allowed)}
-              className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${form.pets_allowed ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'}`}>
-              {form.pets_allowed ? '반려동물 가능' : '반려동물 불가'}
-            </button>
+            <label className={labelCls}>방향</label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => set('direction', '')}
+                className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${!form.direction ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>모름</button>
+              {DIRECTIONS.map(d => (
+                <button key={d} type="button" onClick={() => set('direction', d)}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${form.direction === d ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                  {d}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>방 옵션 <span className="text-gray-400 font-normal text-xs">(해당 항목 선택)</span></label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: 'has_window', label: '창문 있음' },
+                { key: 'private_bathroom', label: '개별 화장실' },
+                { key: 'private_kitchen', label: '개별 주방' },
+                { key: 'elevator', label: '엘리베이터' },
+                { key: 'utilities_included', label: '공과금 포함' },
+                { key: 'female_safe', label: '여성 안심' },
+                { key: 'has_cafeteria', label: '자체 식당' },
+                { key: 'no_curfew', label: '통금 없음' },
+                { key: 'smoking_allowed', label: '흡연 가능' },
+                { key: 'pets_allowed', label: '반려동물 가능' },
+              ].map(o => (
+                <button key={o.key} type="button" onClick={() => set(o.key, !(form as any)[o.key])}
+                  className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${(form as any)[o.key] ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>

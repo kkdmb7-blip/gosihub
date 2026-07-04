@@ -49,6 +49,9 @@ export default function HomePage() {
   const [mealsOnly, setMealsOnly] = useState(false)
   const [vacancyOnly, setVacancyOnly] = useState(false)
   const [petsOnly, setPetsOnly] = useState(false)
+  const [privateBathOnly, setPrivateBathOnly] = useState(false)
+  const [femaleSafeOnly, setFemaleSafeOnly] = useState(false)
+  const [elevatorOnly, setElevatorOnly] = useState(false)
   const [selectedRegion, setSelectedRegion] = useState('')
 
   const [locating, setLocating] = useState(false)
@@ -75,7 +78,7 @@ export default function HomePage() {
     setCurrentPage(0)
     setRooms([])
     fetchRooms(0, false)
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, debouncedKeyword, nearbyMode, sortBy])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, privateBathOnly, femaleSafeOnly, elevatorOnly, debouncedKeyword, nearbyMode, sortBy])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -96,7 +99,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (view === 'map') fetchMapRooms()
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, debouncedKeyword])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, privateBathOnly, femaleSafeOnly, elevatorOnly, debouncedKeyword])
 
   useEffect(() => {
     const rooms = nearbyMode ? nearbyRooms : mapRooms
@@ -135,6 +138,9 @@ export default function HomePage() {
     if (mealsOnly) q = q.eq('meals', true)
     if (vacancyOnly) q = q.eq('has_vacancy', true)
     if (petsOnly) q = q.eq('pets_allowed', true)
+    if (privateBathOnly) q = q.eq('private_bathroom', true)
+    if (femaleSafeOnly) q = q.eq('female_safe', true)
+    if (elevatorOnly) q = q.eq('elevator', true)
     const kw = debouncedKeyword.trim().replace(/[,()]/g, '')
     if (kw) q = q.or(`title.ilike.%${kw}%,address.ilike.%${kw}%`)
 
@@ -237,6 +243,9 @@ export default function HomePage() {
     if (mealsOnly) q = q.eq('meals', true)
     if (vacancyOnly) q = q.eq('has_vacancy', true)
     if (petsOnly) q = q.eq('pets_allowed', true)
+    if (privateBathOnly) q = q.eq('private_bathroom', true)
+    if (femaleSafeOnly) q = q.eq('female_safe', true)
+    if (elevatorOnly) q = q.eq('elevator', true)
     const kw = debouncedKeyword.trim().replace(/[,()]/g, '')
     if (kw) q = q.or(`title.ilike.%${kw}%,address.ilike.%${kw}%`)
     const { data } = await q
@@ -295,7 +304,7 @@ export default function HomePage() {
 
   const displayRooms = nearbyMode ? nearbyRooms : rooms
   const mapDisplayRooms = nearbyMode ? nearbyRooms : mapRooms
-  const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0) + (vacancyOnly ? 1 : 0) + (petsOnly ? 1 : 0)
+  const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0) + (vacancyOnly ? 1 : 0) + (petsOnly ? 1 : 0) + (privateBathOnly ? 1 : 0) + (femaleSafeOnly ? 1 : 0) + (elevatorOnly ? 1 : 0)
   const hasMore = !nearbyMode && rooms.length < total
 
   return (
@@ -362,6 +371,18 @@ export default function HomePage() {
               className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${petsOnly ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'}`}>
               반려동물
             </button>
+            <button onClick={() => setPrivateBathOnly(!privateBathOnly)}
+              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${privateBathOnly ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+              개별화장실
+            </button>
+            <button onClick={() => setFemaleSafeOnly(!femaleSafeOnly)}
+              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${femaleSafeOnly ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-600 border-gray-200'}`}>
+              여성안심
+            </button>
+            <button onClick={() => setElevatorOnly(!elevatorOnly)}
+              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${elevatorOnly ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-200'}`}>
+              엘리베이터
+            </button>
             <div className="w-px h-4 bg-gray-200 mx-0.5" />
             <select value={nearbyMode ? 'nearby' : sortBy} onChange={e => { if (!nearbyMode) setSortBy(e.target.value as any) }}
               disabled={nearbyMode}
@@ -373,7 +394,7 @@ export default function HomePage() {
               <option value="area">면적 큰순</option>
             </select>
             {activeFilters > 0 && (
-              <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false); setVacancyOnly(false); setPetsOnly(false) }}
+              <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false); setVacancyOnly(false); setPetsOnly(false); setPrivateBathOnly(false); setFemaleSafeOnly(false); setElevatorOnly(false) }}
                 className="text-xs px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100 font-medium">
                 초기화 {activeFilters}
               </button>

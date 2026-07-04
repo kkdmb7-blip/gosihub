@@ -118,6 +118,15 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
 
           <div className="flex flex-wrap gap-1">
             <span className="text-xs bg-gray-50 text-gray-600 px-2 py-0.5 rounded-full border border-gray-100">{room.gender}</span>
+            {(room as any).vacancy_count != null && (room as any).vacancy_count > 0 && (
+              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-100 font-medium">공실 {(room as any).vacancy_count}</span>
+            )}
+            {(room as any).private_bathroom && (
+              <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-100">개별화장실</span>
+            )}
+            {(room as any).female_safe && (
+              <span className="text-xs bg-pink-50 text-pink-700 px-2 py-0.5 rounded-full border border-pink-100">여성안심</span>
+            )}
             {room.meals && (
               <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-100">식사제공</span>
             )}
@@ -125,13 +134,8 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
               <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">최소 {room.min_contract}</span>
             )}
             {room.pets_allowed && (
-              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-100">반려동물 가능</span>
+              <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-100">반려동물</span>
             )}
-            {!room.min_contract && !room.pets_allowed && room.amenities?.slice(0, 2).map(a => (
-              <span key={a} className="text-xs bg-gray-50 text-gray-600 px-2 py-0.5 rounded-full border border-gray-100">
-                {AMENITY_ICONS[a] || a}
-              </span>
-            ))}
           </div>
         </div>
       </div>

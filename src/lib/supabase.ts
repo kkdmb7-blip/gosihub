@@ -57,6 +57,19 @@ export interface Room {
   pets_allowed: boolean
   photo_categories?: string[]
   video_url?: string
+  total_rooms?: number
+  vacancy_count?: number
+  has_window: boolean
+  private_bathroom: boolean
+  private_kitchen: boolean
+  direction?: string
+  elevator: boolean
+  building_year?: number
+  utilities_included: boolean
+  female_safe: boolean
+  smoking_allowed: boolean
+  has_cafeteria: boolean
+  no_curfew: boolean
 }
 
 export interface User {
