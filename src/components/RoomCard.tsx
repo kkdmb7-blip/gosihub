@@ -1,5 +1,8 @@
+'use client'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Room } from '@/lib/supabase'
+import { getCompareIds, toggleCompare, COMPARE_EVENT } from '@/lib/compare'
 
 interface Props {
   room: Room
@@ -19,10 +22,30 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
   )
   const freshness = daysSince <= 3 ? '최신' : daysSince <= 14 ? `${daysSince}일 전` : null
 
+  const [isCompared, setIsCompared] = useState(false)
+
+  useEffect(() => {
+    const update = () => setIsCompared(getCompareIds().includes(room.id))
+    update()
+    window.addEventListener(COMPARE_EVENT, update)
+    return () => window.removeEventListener(COMPARE_EVENT, update)
+  }, [room.id])
+
   function handleFavorite(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
     onToggleFavorite?.(room.id)
+  }
+
+  function handleCompare(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const ids = getCompareIds()
+    if (!isCompared && ids.length >= 3) {
+      alert('최대 3개까지 비교할 수 있어요')
+      return
+    }
+    toggleCompare(room.id)
   }
 
   return (
@@ -52,6 +75,13 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
           <span className={`absolute top-2 right-10 text-xs font-bold px-2 py-0.5 rounded-full badge-${room.type}`}>
             {room.type}
           </span>
+          {/* 비교 버튼 */}
+          <button onClick={handleCompare}
+            className={`absolute bottom-2 left-2 w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold shadow-sm border transition-all ${
+              isCompared ? 'bg-blue-600 text-white border-blue-600' : 'bg-white/80 backdrop-blur-sm text-gray-500 border-gray-200 hover:border-blue-400 hover:text-blue-500'
+            }`}>
+            {isCompared ? '✓' : '+'}
+          </button>
           {/* 즐겨찾기 버튼 */}
           <button onClick={handleFavorite}
             className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-white/80 backdrop-blur-sm rounded-full shadow-sm hover:scale-110 transition-transform">
