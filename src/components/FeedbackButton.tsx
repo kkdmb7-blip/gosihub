@@ -16,7 +16,7 @@ export default function FeedbackButton() {
     if (message.trim().length < 5) { alert('5자 이상 입력해주세요'); return }
     setSubmitting(true)
     const { data: { user } } = await supabase.auth.getUser()
-    await supabase.from('feedback').insert({
+    const { error } = await supabase.from('feedback').insert({
       category,
       message: message.trim(),
       contact: contact.trim() || null,
@@ -24,6 +24,7 @@ export default function FeedbackButton() {
       page: window.location.pathname,
     })
     setSubmitting(false)
+    if (error) { alert('전송 실패: ' + error.message); return }
     setDone(true)
     setTimeout(() => { setOpen(false); setDone(false); setMessage(''); setContact('') }, 2000)
   }

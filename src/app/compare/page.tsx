@@ -36,6 +36,11 @@ function CompareContent() {
     const { data } = await supabase.from('rooms').select('*').in('id', ids)
     if (data) {
       const ordered = ids.map(id => data.find(r => r.id === id)).filter(Boolean) as Room[]
+      if (ordered.length < 2) {
+        setCompareIds(ordered.map(r => r.id))
+        router.push('/')
+        return
+      }
       setRooms(ordered)
     }
     setLoading(false)

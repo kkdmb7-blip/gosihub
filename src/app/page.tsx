@@ -42,6 +42,7 @@ export default function HomePage() {
   const [view, setView] = useState<'list' | 'map'>('list')
 
   const [keyword, setKeyword] = useState('')
+  const [debouncedKeyword, setDebouncedKeyword] = useState('')
   const [selectedTypes, setSelectedTypes] = useState<RoomType[]>([])
   const [selectedGender, setSelectedGender] = useState<GenderType | ''>('')
   const [priceIdx, setPriceIdx] = useState(0)
@@ -62,13 +63,19 @@ export default function HomePage() {
   const [user, setUser] = useState<any>(null)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
+  // 키워드 디바운스 (300ms) — 매 글자마다 DB 히트 방지
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedKeyword(keyword), 300)
+    return () => clearTimeout(t)
+  }, [keyword])
+
   // 필터/정렬 변경시 첫 페이지부터 다시 로드
   useEffect(() => {
     if (nearbyMode) return
     setCurrentPage(0)
     setRooms([])
     fetchRooms(0, false)
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, keyword, nearbyMode, sortBy])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, debouncedKeyword, nearbyMode, sortBy])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -89,7 +96,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (view === 'map') fetchMapRooms()
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, keyword])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, vacancyOnly, petsOnly, debouncedKeyword])
 
   useEffect(() => {
     const rooms = nearbyMode ? nearbyRooms : mapRooms
@@ -128,7 +135,8 @@ export default function HomePage() {
     if (mealsOnly) q = q.eq('meals', true)
     if (vacancyOnly) q = q.eq('has_vacancy', true)
     if (petsOnly) q = q.eq('pets_allowed', true)
-    if (keyword.trim()) q = q.or(`title.ilike.%${keyword.trim()}%,address.ilike.%${keyword.trim()}%`)
+    const kw = debouncedKeyword.trim().replace(/[,()]/g, '')
+    if (kw) q = q.or(`title.ilike.%${kw}%,address.ilike.%${kw}%`)
 
     return q
   }
@@ -229,7 +237,8 @@ export default function HomePage() {
     if (mealsOnly) q = q.eq('meals', true)
     if (vacancyOnly) q = q.eq('has_vacancy', true)
     if (petsOnly) q = q.eq('pets_allowed', true)
-    if (keyword.trim()) q = q.or(`title.ilike.%${keyword.trim()}%,address.ilike.%${keyword.trim()}%`)
+    const kw = debouncedKeyword.trim().replace(/[,()]/g, '')
+    if (kw) q = q.or(`title.ilike.%${kw}%,address.ilike.%${kw}%`)
     const { data } = await q
     setMapRooms(data || [])
     if (kakaoMap.current) renderMarkers(data || [])

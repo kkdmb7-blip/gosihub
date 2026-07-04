@@ -182,17 +182,20 @@ export default function EditRoomPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { alert('로그인이 필요합니다'); return }
 
-      let photoUrls = [...form.existingPhotos]
-      for (const file of newPhotos) {
+      const newUploads: { url: string; cat: string }[] = []
+      for (let i = 0; i < newPhotos.length; i++) {
+        const file = newPhotos[i]
         const ext = file.name.split('.').pop()
         const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         const { data, error: uploadError } = await supabase.storage.from('room-photos').upload(path, file)
-        if (uploadError) { console.error('사진 업로드 실패:', uploadError.message) }
+        if (uploadError) { console.error('사진 업로드 실패:', uploadError.message); continue }
         if (data) {
           const { data: urlData } = supabase.storage.from('room-photos').getPublicUrl(path)
-          photoUrls.push(urlData.publicUrl)
+          newUploads.push({ url: urlData.publicUrl, cat: newPhotoCategories[i] || '' })
         }
       }
+      const photoUrls = [...form.existingPhotos, ...newUploads.map(u => u.url)]
+      const photoCats = [...existingPhotoCategories, ...newUploads.map(u => u.cat)]
 
       const { error } = await supabase.from('rooms').update({
         title: form.title,
@@ -223,10 +226,7 @@ export default function EditRoomPage() {
         cctv: form.amenities.includes('cctv'),
         laundry: form.amenities.includes('laundry'),
         photos: photoUrls,
-        photo_categories: [
-          ...existingPhotoCategories,
-          ...newPhotoCategories.slice(0, newPhotos.length),
-        ].slice(0, photoUrls.length),
+        photo_categories: photoCats,
         updated_at: new Date().toISOString(),
       }).eq('id', id as string)
 

@@ -52,7 +52,7 @@ export default function MyPage() {
   async function fetchPayments(userId?: string) {
     const uid = userId || user?.id
     if (!uid) return
-    const { data } = await supabase.from('rent_payments').select('*').eq('user_id', uid).order('id', { ascending: false }).limit(20)
+    const { data } = await supabase.from('rent_payments').select('*').eq('user_id', uid).order('paid_at', { ascending: false, nullsFirst: false }).limit(20)
     setPayments(data || [])
   }
 
@@ -111,7 +111,8 @@ export default function MyPage() {
   }
 
   async function saveTenantRoom() {
-    if (!tenantForm.room_id.trim() || !tenantForm.move_in_date) return
+    if (!tenantForm.room_id.trim()) { window.alert('방 ID를 입력해주세요'); return }
+    if (!tenantForm.move_in_date) { window.alert('입주일을 선택해주세요'); return }
     const { error } = await supabase.from('tenant_rooms').upsert({
       user_id: user.id,
       room_id: tenantForm.room_id.trim(),
@@ -119,14 +120,16 @@ export default function MyPage() {
       contract_months: tenantForm.contract_months,
       note: tenantForm.note || null,
     }, { onConflict: 'user_id,room_id' })
-    if (error) { alert('등록 실패: 방 ID를 다시 확인해주세요'); return }
+    if (error) { window.alert('등록 실패: 방 ID를 다시 확인해주세요'); return }
     setShowTenantForm(false)
     setTenantForm({ room_id: '', move_in_date: '', contract_months: 6, note: '' })
     fetchTenantRooms(user.id)
   }
 
   async function deleteTenantRoom(id: string) {
-    await supabase.from('tenant_rooms').delete().eq('id', id)
+    if (!confirm('입주 정보를 삭제할까요?')) return
+    const { error } = await supabase.from('tenant_rooms').delete().eq('id', id)
+    if (error) { window.alert('삭제 실패: ' + error.message); return }
     setTenantRooms(prev => prev.filter(t => t.id !== id))
   }
 
@@ -181,7 +184,8 @@ export default function MyPage() {
 
   async function deleteRoom(id: string) {
     if (!confirm('정말 삭제할까요?')) return
-    await supabase.from('rooms').delete().eq('id', id)
+    const { error } = await supabase.from('rooms').delete().eq('id', id)
+    if (error) { window.alert('삭제 실패: ' + error.message); return }
     setRooms(prev => prev.filter(r => r.id !== id))
   }
 

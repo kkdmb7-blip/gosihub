@@ -136,17 +136,20 @@ export default function RegisterPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { alert('로그인이 필요합니다'); return }
 
-      let photoUrls: string[] = []
-      for (const file of photos) {
+      const uploads: { url: string; cat: string }[] = []
+      for (let i = 0; i < photos.length; i++) {
+        const file = photos[i]
         const ext = file.name.split('.').pop()
         const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
         const { data, error: uploadError } = await supabase.storage.from('room-photos').upload(path, file)
-        if (uploadError) { console.error('사진 업로드 실패:', uploadError.message) }
+        if (uploadError) { console.error('사진 업로드 실패:', uploadError.message); continue }
         if (data) {
           const { data: urlData } = supabase.storage.from('room-photos').getPublicUrl(path)
-          photoUrls.push(urlData.publicUrl)
+          uploads.push({ url: urlData.publicUrl, cat: photoCategories[i] || '' })
         }
       }
+      const photoUrls = uploads.map(u => u.url)
+      const photoCats = uploads.map(u => u.cat)
 
       const { error } = await supabase.from('rooms').insert({
         owner_id: user.id,
@@ -178,7 +181,7 @@ export default function RegisterPage() {
         cctv: form.amenities.includes('cctv'),
         laundry: form.amenities.includes('laundry'),
         photos: photoUrls,
-        photo_categories: photoCategories.slice(0, photoUrls.length),
+        photo_categories: photoCats,
         is_active: true,
         last_confirmed_at: new Date().toISOString(),
       })
