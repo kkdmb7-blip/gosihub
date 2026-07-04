@@ -106,7 +106,7 @@ export default function HomePage() {
       .filter(r => r.lat && r.lng)
       .map(room => {
         const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
-        const content = `<div style="background:white;border:2px solid #2563eb;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;">${room.price}만원</div>`
+        const content = `<div onclick="window.location.href='/rooms/${room.id}'" style="background:white;border:2px solid #2563eb;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;">${room.price}만원</div>`
         const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content })
         overlay.setMap(kakaoMap.current)
         return overlay
