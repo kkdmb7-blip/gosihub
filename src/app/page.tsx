@@ -54,17 +54,18 @@ export default function HomePage() {
   const [mapRooms, setMapRooms] = useState<Room[]>([])
   const [visibleRooms, setVisibleRooms] = useState<Room[]>([])
   const [mapBoundsMode, setMapBoundsMode] = useState(false)
+  const [sortBy, setSortBy] = useState<'recent' | 'price_asc' | 'price_desc' | 'area'>('recent')
 
   const [user, setUser] = useState<any>(null)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
 
-  // 필터 변경시 첫 페이지부터 다시 로드
+  // 필터/정렬 변경시 첫 페이지부터 다시 로드
   useEffect(() => {
     if (nearbyMode) return
     setCurrentPage(0)
     setRooms([])
     fetchRooms(0, false)
-  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword, nearbyMode])
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword, nearbyMode, sortBy])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -95,10 +96,17 @@ export default function HomePage() {
   }, [mapRooms, nearbyRooms])
 
   function buildQuery(page: number) {
+    const orderMap: Record<string, { col: string; asc: boolean }> = {
+      recent:     { col: 'last_confirmed_at', asc: false },
+      price_asc:  { col: 'price', asc: true },
+      price_desc: { col: 'price', asc: false },
+      area:       { col: 'area', asc: false },
+    }
+    const { col, asc } = orderMap[sortBy]
     let q: any = supabase.from('rooms')
       .select('*', { count: 'exact' })
       .eq('is_active', true)
-      .order('last_confirmed_at', { ascending: false })
+      .order(col, { ascending: asc, nullsFirst: false })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
     if (selectedRegion === '기타') {
@@ -326,6 +334,16 @@ export default function HomePage() {
               className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${mealsOnly ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
               식사제공
             </button>
+            <div className="w-px h-4 bg-gray-200 mx-0.5" />
+            <select value={nearbyMode ? 'nearby' : sortBy} onChange={e => { if (!nearbyMode) setSortBy(e.target.value as any) }}
+              disabled={nearbyMode}
+              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 focus:outline-none disabled:opacity-60">
+              {nearbyMode && <option value="nearby">거리 가까운순</option>}
+              <option value="recent">최신순</option>
+              <option value="price_asc">가격 낮은순</option>
+              <option value="price_desc">가격 높은순</option>
+              <option value="area">면적 큰순</option>
+            </select>
             {activeFilters > 0 && (
               <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false) }}
                 className="text-xs px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100 font-medium">
