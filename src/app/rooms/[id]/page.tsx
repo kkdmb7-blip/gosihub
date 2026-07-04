@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase, Room } from '@/lib/supabase'
+import ReviewSection from '@/components/ReviewSection'
 
 const AMENITY_LABELS: Record<string, string> = {
   wifi: 'Wi-Fi', meals: '식사제공', laundry: '세탁기',
@@ -151,6 +152,11 @@ export default function RoomDetailPage() {
           <p className="text-sm text-green-800 font-medium">입주 가능일: {room.move_in_date}</p>
         </div>
       )}
+
+      {/* 리뷰 */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-24 shadow-sm">
+        <ReviewSection roomId={id as string} />
+      </div>
 
       {/* 고정 하단 연락처 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 max-w-2xl mx-auto">

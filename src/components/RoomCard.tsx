@@ -59,12 +59,20 @@ export default function RoomCard({ room }: Props) {
           <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">{room.title}</h3>
           <p className="text-xs text-gray-500 mb-2 truncate">{room.address}</p>
 
-          <div className="flex items-baseline gap-1 mb-2">
-            {room.deposit > 0 && (
-              <span className="text-xs text-gray-500">보증금 {room.deposit.toLocaleString()}만</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-baseline gap-1">
+              {room.deposit > 0 && (
+                <span className="text-xs text-gray-500">보증금 {room.deposit.toLocaleString()}만</span>
+              )}
+              <span className="font-bold text-gray-900">{room.price.toLocaleString()}만원</span>
+              <span className="text-xs text-gray-400">/월</span>
+            </div>
+            {(room as any).avg_rating > 0 && (
+              <span className="text-xs text-amber-500 font-medium">
+                ★ {(room as any).avg_rating}
+                <span className="text-gray-400 font-normal ml-0.5">({(room as any).review_count})</span>
+              </span>
             )}
-            <span className="font-bold text-gray-900">{room.price.toLocaleString()}만원</span>
-            <span className="text-xs text-gray-400">/월</span>
           </div>
 
           <div className="flex flex-wrap gap-1">
