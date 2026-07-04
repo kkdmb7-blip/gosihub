@@ -51,6 +51,7 @@ export default function HomePage() {
   const [nearbyMode, setNearbyMode] = useState(false)
   const [nearbyRooms, setNearbyRooms] = useState<Room[]>([])
   const [userPos, setUserPos] = useState<{lat: number, lng: number} | null>(null)
+  const [mapRooms, setMapRooms] = useState<Room[]>([])
 
   const [user, setUser] = useState<any>(null)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
@@ -70,13 +71,23 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    if (view === 'map') { const t = setTimeout(initMap, 100); return () => clearTimeout(t) }
-    else { kakaoMap.current = null; markersRef.current = [] }
+    if (view === 'map') {
+      fetchMapRooms()
+      const t = setTimeout(initMap, 100)
+      return () => clearTimeout(t)
+    } else {
+      kakaoMap.current = null
+      markersRef.current = []
+    }
   }, [view])
 
   useEffect(() => {
-    if (kakaoMap.current) renderMarkers(nearbyMode ? nearbyRooms : rooms)
-  }, [rooms, nearbyRooms])
+    if (view === 'map') fetchMapRooms()
+  }, [selectedRegion, selectedTypes, selectedGender, priceIdx, mealsOnly, keyword])
+
+  useEffect(() => {
+    if (kakaoMap.current) renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
+  }, [mapRooms, nearbyRooms])
 
   function buildQuery(page: number) {
     let q: any = supabase.from('rooms')
@@ -177,17 +188,43 @@ export default function HomePage() {
     setUserPos(null)
   }
 
+  async function fetchMapRooms() {
+    let q: any = supabase.from('rooms')
+      .select('id, title, price, lat, lng, type, address')
+      .eq('is_active', true)
+      .not('lat', 'is', null)
+      .not('lng', 'is', null)
+      .limit(500)
+    if (selectedRegion === '기타') {
+      for (const c of MAIN_CITIES) q = q.not('address', 'ilike', `%${c}%`)
+    } else if (selectedRegion) {
+      q = q.ilike('address', `%${selectedRegion}%`)
+    }
+    if (selectedTypes.length > 0) q = q.in('type', selectedTypes)
+    if (selectedGender) q = q.eq('gender', selectedGender)
+    const po = PRICE_OPTIONS[priceIdx]
+    if (po.max < 9999) q = q.lte('price', po.max)
+    if (po.min > 0) q = q.gte('price', po.min)
+    if (mealsOnly) q = q.eq('meals', true)
+    if (keyword.trim()) q = q.or(`title.ilike.%${keyword.trim()}%,address.ilike.%${keyword.trim()}%`)
+    const { data } = await q
+    setMapRooms(data || [])
+    if (kakaoMap.current) renderMarkers(data || [])
+  }
+
   function createMap() {
     if (!mapRef.current || kakaoMap.current) return
     const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
     kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
-    renderMarkers(nearbyMode ? nearbyRooms : rooms)
+    renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
   }
 
   function initMap() {
-    if (window.kakao?.maps) { createMap(); return }
-    const existingScript = document.getElementById('kakao-map-script')
-    if (existingScript) { existingScript.addEventListener('load', createMap); return }
+    if (window.kakao?.maps) {
+      window.kakao.maps.load(createMap)
+      return
+    }
+    if (document.getElementById('kakao-map-script')) return
     const script = document.createElement('script')
     script.id = 'kakao-map-script'
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
@@ -211,6 +248,7 @@ export default function HomePage() {
   }
 
   const displayRooms = nearbyMode ? nearbyRooms : rooms
+  const mapDisplayRooms = nearbyMode ? nearbyRooms : mapRooms
   const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0)
   const hasMore = !nearbyMode && rooms.length < total
 
@@ -338,9 +376,10 @@ export default function HomePage() {
 
         {view === 'map' && (
           <div>
-            <div className="rounded-2xl overflow-hidden border border-gray-100 mb-3" style={{ height: 400 }}>
+            <div className="rounded-2xl overflow-hidden border border-gray-100 mb-1" style={{ height: 400 }}>
               <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
             </div>
+            <p className="text-xs text-gray-400 mb-3 text-right">지도에 {mapDisplayRooms.length}개 표시됨</p>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {displayRooms.map(room => (
                 <RoomCard key={room.id} room={room}
