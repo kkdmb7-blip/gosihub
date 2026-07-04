@@ -155,7 +155,7 @@ export default function RoomDetailPage() {
 
       {/* 리뷰 */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-24 shadow-sm">
-        <ReviewSection roomId={id as string} />
+        <ReviewSection roomId={id as string} ownerId={room.owner_id} />
       </div>
 
       {/* 고정 하단 연락처 버튼 */}

@@ -35,7 +35,7 @@ function Stars({ value, onChange }: { value: number; onChange?: (v: number) => v
   )
 }
 
-export default function ReviewSection({ roomId }: { roomId: string }) {
+export default function ReviewSection({ roomId, ownerId }: { roomId: string; ownerId?: string }) {
   const [reviews, setReviews] = useState<Review[]>([])
   const [user, setUser] = useState<any>(null)
   const [myReview, setMyReview] = useState<Review | null>(null)
@@ -121,7 +121,7 @@ export default function ReviewSection({ roomId }: { roomId: string }) {
             </span>
           )}
         </div>
-        {user && !myReview && !showForm && (
+        {user && !myReview && !showForm && user.id !== ownerId && (
           <button onClick={() => setShowForm(true)}
             className="text-sm text-blue-600 font-medium border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50">
             리뷰 쓰기
