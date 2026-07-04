@@ -101,19 +101,20 @@ export default function RegisterPage() {
     }
     setLoading(true)
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { alert('로그인이 필요합니다'); setLoading(false); return }
+
     let photoUrls: string[] = []
     for (const file of photos) {
       const ext = file.name.split('.').pop()
-      const path = `rooms/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-      const { data } = await supabase.storage.from('room-photos').upload(path, file)
+      const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const { data, error: uploadError } = await supabase.storage.from('room-photos').upload(path, file)
+      if (uploadError) { console.error('사진 업로드 실패:', uploadError.message) }
       if (data) {
         const { data: urlData } = supabase.storage.from('room-photos').getPublicUrl(path)
         photoUrls.push(urlData.publicUrl)
       }
     }
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { alert('로그인이 필요합니다'); setLoading(false); return }
 
     const { error } = await supabase.from('rooms').insert({
       owner_id: user.id,
