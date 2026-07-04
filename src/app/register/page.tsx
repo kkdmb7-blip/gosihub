@@ -112,7 +112,11 @@ export default function RegisterPage() {
       }
     }
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { alert('로그인이 필요합니다'); setLoading(false); return }
+
     const { error } = await supabase.from('rooms').insert({
+      owner_id: user.id,
       title: form.title,
       type: form.type,
       price: parseInt(form.price),
