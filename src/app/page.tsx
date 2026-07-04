@@ -8,11 +8,23 @@ declare global { interface Window { kakao: any } }
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
 const GENDERS: GenderType[] = ['남녀공용', '남성전용', '여성전용']
 const PRICE_OPTIONS = [
-  { label: '가격 전체', max: 9999, min: 0 },
-  { label: '~30만원', max: 30, min: 0 },
-  { label: '~50만원', max: 50, min: 0 },
-  { label: '~70만원', max: 70, min: 0 },
-  { label: '70만원+', max: 9999, min: 70 },
+  { label: '전체', max: 9999, min: 0 },
+  { label: '~30만', max: 30, min: 0 },
+  { label: '~50만', max: 50, min: 0 },
+  { label: '~70만', max: 70, min: 0 },
+  { label: '70만+', max: 9999, min: 70 },
+]
+
+const REGIONS = [
+  { label: '전체', value: '' },
+  { label: '서울', value: '서울' },
+  { label: '경기', value: '경기' },
+  { label: '인천', value: '인천' },
+  { label: '부산', value: '부산' },
+  { label: '대구', value: '대구' },
+  { label: '대전', value: '대전' },
+  { label: '광주', value: '광주' },
+  { label: '기타', value: '기타' },
 ]
 
 export default function HomePage() {
@@ -29,16 +41,18 @@ export default function HomePage() {
   const [selectedGender, setSelectedGender] = useState<GenderType | ''>('')
   const [priceIdx, setPriceIdx] = useState(0)
   const [mealsOnly, setMealsOnly] = useState(false)
+  const [selectedRegion, setSelectedRegion] = useState('')
+  const [locating, setLocating] = useState(false)
+  const [nearbyMode, setNearbyMode] = useState(false)
+  const [userPos, setUserPos] = useState<{lat: number, lng: number} | null>(null)
 
   useEffect(() => { fetchRooms() }, [])
-  useEffect(() => { applyFilter() }, [rooms, keyword, selectedTypes, selectedGender, priceIdx, mealsOnly])
+  useEffect(() => { applyFilter() }, [rooms, keyword, selectedTypes, selectedGender, priceIdx, mealsOnly, selectedRegion, nearbyMode, userPos])
   useEffect(() => {
     if (view === 'map') {
-      // mapRef가 DOM에 마운트된 후 실행되도록 setTimeout 사용
       const timer = setTimeout(initMap, 100)
       return () => clearTimeout(timer)
     } else {
-      // 목록으로 돌아오면 map 인스턴스 초기화 (재진입 시 재생성)
       kakaoMap.current = null
       markersRef.current = []
     }
@@ -62,16 +76,55 @@ export default function HomePage() {
       const kw = keyword.trim().toLowerCase()
       result = result.filter(r => r.title.toLowerCase().includes(kw) || r.address.toLowerCase().includes(kw))
     }
+    if (selectedRegion) {
+      if (selectedRegion === '기타') {
+        result = result.filter(r => !['서울', '경기', '인천', '부산', '대구', '대전', '광주'].some(c => r.address.includes(c)))
+      } else {
+        result = result.filter(r => r.address.includes(selectedRegion))
+      }
+    }
     if (selectedTypes.length > 0) result = result.filter(r => selectedTypes.includes(r.type))
     if (selectedGender) result = result.filter(r => r.gender === selectedGender)
     const po = PRICE_OPTIONS[priceIdx]
     result = result.filter(r => r.price <= po.max && r.price >= po.min)
     if (mealsOnly) result = result.filter(r => r.meals)
+    if (nearbyMode && userPos) {
+      result = result
+        .filter(r => r.lat && r.lng)
+        .map(r => ({
+          ...r,
+          _dist: Math.sqrt(Math.pow(r.lat - userPos.lat, 2) + Math.pow(r.lng - userPos.lng, 2))
+        }))
+        .sort((a: any, b: any) => a._dist - b._dist)
+        .slice(0, 50) as Room[]
+    }
     setFiltered(result)
   }
 
   function toggleType(t: RoomType) {
     setSelectedTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
+  }
+
+  async function findNearby() {
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setNearbyMode(true)
+        setLocating(false)
+        if (view === 'map' && kakaoMap.current) {
+          const center = new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude)
+          kakaoMap.current.setCenter(center)
+          kakaoMap.current.setLevel(5)
+        }
+      },
+      () => { alert('위치 정보를 가져올 수 없어요. 브라우저 위치 권한을 확인해주세요.'); setLocating(false) }
+    )
+  }
+
+  function clearNearby() {
+    setNearbyMode(false)
+    setUserPos(null)
   }
 
   function createMap() {
@@ -82,15 +135,9 @@ export default function HomePage() {
   }
 
   function initMap() {
-    if (window.kakao?.maps) {
-      createMap()
-      return
-    }
+    if (window.kakao?.maps) { createMap(); return }
     const existingScript = document.getElementById('kakao-map-script')
-    if (existingScript) {
-      existingScript.addEventListener('load', createMap)
-      return
-    }
+    if (existingScript) { existingScript.addEventListener('load', createMap); return }
     const script = document.createElement('script')
     script.id = 'kakao-map-script'
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
@@ -113,20 +160,41 @@ export default function HomePage() {
       })
   }
 
+  const activeFilters = selectedTypes.length + (selectedGender ? 1 : 0) + (priceIdx > 0 ? 1 : 0) + (mealsOnly ? 1 : 0)
+
   return (
     <div className="min-h-screen" style={{ background: '#f8f7f4' }}>
-      {/* 검색/필터 헤더 */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-14 z-40">
+      {/* 지역 탭 */}
+      <div className="bg-white border-b border-gray-100 px-4 overflow-x-auto">
+        <div className="flex gap-0 max-w-5xl mx-auto">
+          {REGIONS.map(r => (
+            <button key={r.value} onClick={() => { setSelectedRegion(r.value); clearNearby() }}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${selectedRegion === r.value && !nearbyMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+              {r.label}
+            </button>
+          ))}
+          <button onClick={nearbyMode ? clearNearby : findNearby} disabled={locating}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all flex items-center gap-1 ${nearbyMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}>
+            {locating ? (
+              <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+              </svg>
+            )}
+            내 주변
+          </button>
+        </div>
+      </div>
+
+      {/* 검색/필터 */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-14 z-40">
         <div className="max-w-5xl mx-auto">
           <div className="flex gap-2 mb-3">
             <div className="flex-1 relative">
-              <input
-                type="text"
-                placeholder="지역, 지하철역, 대학교로 검색"
-                value={keyword}
-                onChange={e => setKeyword(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 bg-gray-50"
-              />
+              <input type="text" placeholder="고시원 이름, 지역, 지하철역 검색"
+                value={keyword} onChange={e => setKeyword(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 bg-gray-50" />
               {keyword && (
                 <button onClick={() => setKeyword('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl leading-none">×</button>
               )}
@@ -153,13 +221,21 @@ export default function HomePage() {
               className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${mealsOnly ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
               식사제공
             </button>
+            {activeFilters > 0 && (
+              <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false) }}
+                className="text-xs px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100 font-medium">
+                초기화 {activeFilters}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-500">{loading ? '검색 중...' : `총 ${filtered.length}개 매물`}</p>
+          <p className="text-sm text-gray-500">
+            {loading ? '검색 중...' : nearbyMode ? `내 주변 ${filtered.length}개` : `${selectedRegion || '전국'} ${filtered.length}개 매물`}
+          </p>
           <div className="flex bg-gray-100 rounded-lg p-0.5">
             {(['list', 'map'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
