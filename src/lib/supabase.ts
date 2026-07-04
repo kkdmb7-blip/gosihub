@@ -56,6 +56,7 @@ export interface Room {
   min_contract?: string
   pets_allowed: boolean
   photo_categories?: string[]
+  video_url?: string
 }
 
 export interface User {

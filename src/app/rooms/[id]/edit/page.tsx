@@ -55,6 +55,7 @@ export default function EditRoomPage() {
     management_fee: '',
     min_contract: '',
     pets_allowed: false,
+    video_url: '',
     amenities: [] as string[],
     existingPhotos: [] as string[],
   })
@@ -92,6 +93,7 @@ export default function EditRoomPage() {
       management_fee: room.management_fee?.toString() || '0',
       min_contract: (room as any).min_contract || '',
       pets_allowed: (room as any).pets_allowed || false,
+      video_url: (room as any).video_url || '',
       amenities: room.amenities || [],
       existingPhotos: room.photos || [],
     })
@@ -210,6 +212,7 @@ export default function EditRoomPage() {
         management_fee: parseInt((form as any).management_fee) || 0,
         min_contract: (form as any).min_contract || null,
         pets_allowed: (form as any).pets_allowed || false,
+        video_url: (form as any).video_url || null,
         owner_name: form.owner_name,
         owner_phone: form.owner_phone,
         kakao_open_chat: form.kakao_open_chat || null,
@@ -365,6 +368,13 @@ export default function EditRoomPage() {
             className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${(form as any).pets_allowed ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'}`}>
             {(form as any).pets_allowed ? '반려동물 가능' : '반려동물 불가'}
           </button>
+        </div>
+
+        {/* 영상 룸투어 */}
+        <div>
+          <label className={labelCls}>영상 룸투어 <span className="text-gray-400 font-normal">(선택)</span></label>
+          <input className={inputCls} placeholder="유튜브 링크 (https://youtu.be/...)" value={(form as any).video_url || ''} onChange={e => set('video_url', e.target.value)} />
+          <p className="text-xs text-gray-400 mt-1">유튜브 공유 → 링크 복사 후 붙여넣기</p>
         </div>
 
         {/* 설명 */}

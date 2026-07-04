@@ -50,6 +50,7 @@ export default function RegisterPage() {
     management_fee: '',
     min_contract: '',
     pets_allowed: false,
+    video_url: '',
     owner_name: '',
     owner_phone: '',
     amenities: [] as string[],
@@ -166,6 +167,7 @@ export default function RegisterPage() {
         management_fee: parseInt(form.management_fee) || 0,
         min_contract: form.min_contract || null,
         pets_allowed: form.pets_allowed,
+        video_url: (form as any).video_url || null,
         owner_name: form.owner_name,
         owner_phone: form.owner_phone,
         kakao_open_chat: (form as any).kakao_open_chat || null,
@@ -331,6 +333,12 @@ export default function RegisterPage() {
               className={`px-4 py-2 rounded-xl border text-sm font-medium transition-all ${form.pets_allowed ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'}`}>
               {form.pets_allowed ? '반려동물 가능' : '반려동물 불가'}
             </button>
+          </div>
+
+          <div>
+            <label className={labelCls}>영상 룸투어 <span className="text-gray-400 font-normal">(선택)</span></label>
+            <input className={inputCls} placeholder="유튜브 링크 (https://youtu.be/...)" value={(form as any).video_url || ''} onChange={e => set('video_url', e.target.value)} />
+            <p className="text-xs text-gray-400 mt-1">유튜브 공유 → 링크 복사 후 붙여넣기</p>
           </div>
 
           <div>

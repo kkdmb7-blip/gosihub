@@ -221,6 +221,13 @@ export default function RoomDetailPage() {
     ? Math.floor((Date.now() - new Date(room.last_confirmed_at || room.created_at).getTime()) / 86400000)
     : 0
 
+  function getYoutubeEmbedUrl(url: string): string | null {
+    if (!url) return null
+    // youtu.be/ID or youtube.com/watch?v=ID or youtube.com/embed/ID
+    const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/)
+    return m ? `https://www.youtube.com/embed/${m[1]}` : null
+  }
+
   const PHOTO_CATS = ['개인방', '화장실', '주방', '세탁실', '복도', '외관']
   const photoCategories: string[] = room?.photo_categories || []
   const availablePhotoTabs = room ? ['전체', ...PHOTO_CATS.filter(cat =>
@@ -257,6 +264,21 @@ export default function RoomDetailPage() {
       <button onClick={() => router.back()} className="text-sm text-gray-500 mb-4 flex items-center gap-1 hover:text-gray-800">
         ← 목록으로
       </button>
+
+      {/* 영상 룸투어 */}
+      {room.video_url && getYoutubeEmbedUrl(room.video_url) && (
+        <div className="mb-4">
+          <p className="text-xs text-gray-500 font-medium mb-1.5">영상 룸투어</p>
+          <div className="relative w-full rounded-2xl overflow-hidden bg-black" style={{ paddingTop: '56.25%' }}>
+            <iframe
+              src={getYoutubeEmbedUrl(room.video_url)!}
+              className="absolute inset-0 w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
       {/* 사진 카테고리 탭 */}
       {availablePhotoTabs.length > 1 && (
