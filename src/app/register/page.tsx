@@ -89,7 +89,7 @@ export default function RegisterPage() {
           try {
             const res = await fetch(
               `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(addr)}`,
-              { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}` } }
+              { headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` } }
             )
             const json = await res.json()
             if (json.documents?.[0]) {
