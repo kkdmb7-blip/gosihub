@@ -66,6 +66,7 @@ export default function HomePage() {
 
   const [user, setUser] = useState<any>(null)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
 
   // 키워드 디바운스 (300ms) — 매 글자마다 DB 히트 방지
   useEffect(() => {
@@ -355,73 +356,42 @@ export default function HomePage() {
       {/* 검색/필터 */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-14 z-40">
         <div className="max-w-5xl mx-auto">
-          <div className="flex gap-2 mb-3">
+          {/* 검색바 */}
+          <div className="flex gap-2 mb-2.5">
             <div className="flex-1 relative">
-              <input type="text" placeholder="고시원 이름, 지역, 지하철역 검색"
+              <input type="text" placeholder="고시원 이름, 지역, 지하철역"
                 value={keyword} onChange={e => setKeyword(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400 bg-gray-50" />
+                className="w-full border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-blue-400 bg-gray-50" />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               {keyword && (
                 <button onClick={() => setKeyword('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl leading-none">×</button>
               )}
             </div>
+            <button onClick={() => setShowFilterSheet(true)}
+              className={`relative px-3.5 rounded-xl border font-medium text-sm transition-all flex items-center gap-1.5 ${activeFilters > 0 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200'}`}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+              필터
+              {activeFilters > 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeFilters > 0 ? 'bg-white text-blue-600' : ''}`}>{activeFilters}</span>}
+            </button>
           </div>
-          <div className="flex flex-wrap gap-1.5 items-center">
+          {/* 종류 + 정렬 (필수만 노출) */}
+          <div className="flex flex-nowrap gap-1.5 items-center overflow-x-auto -mx-4 px-4 pb-1">
             {TYPES.map(t => (
               <button key={t} onClick={() => toggleType(t)}
-                className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${selectedTypes.includes(t) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300'}`}>
+                className={`text-xs px-3.5 py-2 rounded-full border font-medium whitespace-nowrap flex-shrink-0 transition-all ${selectedTypes.includes(t) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
                 {t}
               </button>
             ))}
-            <div className="w-px h-4 bg-gray-200 mx-0.5" />
-            <select value={priceIdx} onChange={e => setPriceIdx(Number(e.target.value))}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 focus:outline-none">
-              {PRICE_OPTIONS.map((o, i) => <option key={i} value={i}>{o.label}</option>)}
-            </select>
-            <select value={selectedGender} onChange={e => setSelectedGender(e.target.value as GenderType | '')}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 focus:outline-none">
-              <option value="">성별 전체</option>
-              {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <button onClick={() => setMealsOnly(!mealsOnly)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${mealsOnly ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-              식사제공
-            </button>
-            <button onClick={() => setVacancyOnly(!vacancyOnly)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${vacancyOnly ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-              빈방만
-            </button>
-            <button onClick={() => setPetsOnly(!petsOnly)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${petsOnly ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-gray-600 border-gray-200'}`}>
-              반려동물
-            </button>
-            <button onClick={() => setPrivateBathOnly(!privateBathOnly)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${privateBathOnly ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}>
-              개별화장실
-            </button>
-            <button onClick={() => setFemaleSafeOnly(!femaleSafeOnly)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${femaleSafeOnly ? 'bg-pink-500 text-white border-pink-500' : 'bg-white text-gray-600 border-gray-200'}`}>
-              여성안심
-            </button>
-            <button onClick={() => setElevatorOnly(!elevatorOnly)}
-              className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-all ${elevatorOnly ? 'bg-gray-700 text-white border-gray-700' : 'bg-white text-gray-600 border-gray-200'}`}>
-              엘리베이터
-            </button>
-            <div className="w-px h-4 bg-gray-200 mx-0.5" />
+            <div className="w-px h-4 bg-gray-200 mx-0.5 flex-shrink-0" />
             <select value={nearbyMode ? 'nearby' : sortBy} onChange={e => { if (!nearbyMode) setSortBy(e.target.value as any) }}
               disabled={nearbyMode}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 focus:outline-none disabled:opacity-60">
+              className="text-xs px-3.5 py-2 rounded-full border border-gray-200 bg-white text-gray-600 focus:outline-none disabled:opacity-60 whitespace-nowrap flex-shrink-0">
               {nearbyMode && <option value="nearby">거리 가까운순</option>}
               <option value="recent">최신순</option>
               <option value="price_asc">가격 낮은순</option>
               <option value="price_desc">가격 높은순</option>
               <option value="area">면적 큰순</option>
             </select>
-            {activeFilters > 0 && (
-              <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false); setVacancyOnly(false); setPetsOnly(false); setPrivateBathOnly(false); setFemaleSafeOnly(false); setElevatorOnly(false) }}
-                className="text-xs px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100 font-medium">
-                필터 초기화
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -524,6 +494,81 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* 필터 하단시트 */}
+      {showFilterSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowFilterSheet(false)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white pt-3 pb-3 border-b border-gray-100">
+              <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3" />
+              <div className="flex items-center justify-between px-5">
+                <h3 className="text-base font-bold text-gray-900">필터</h3>
+                {activeFilters > 0 && (
+                  <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false); setVacancyOnly(false); setPetsOnly(false); setPrivateBathOnly(false); setFemaleSafeOnly(false); setElevatorOnly(false) }}
+                    className="text-sm text-red-500 font-medium">초기화</button>
+                )}
+              </div>
+            </div>
+
+            <div className="p-5 space-y-6">
+              {/* 가격 */}
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2.5">월세 범위</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRICE_OPTIONS.map((o, i) => (
+                    <button key={i} onClick={() => setPriceIdx(i)}
+                      className={`text-sm px-4 py-2.5 rounded-xl border font-medium ${priceIdx === i ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 성별 */}
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2.5">성별</p>
+                <div className="grid grid-cols-4 gap-2">
+                  <button onClick={() => setSelectedGender('')}
+                    className={`text-sm py-2.5 rounded-xl border font-medium ${!selectedGender ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>전체</button>
+                  {GENDERS.map(g => (
+                    <button key={g} onClick={() => setSelectedGender(g)}
+                      className={`text-sm py-2.5 rounded-xl border font-medium ${selectedGender === g ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {g.replace('전용', '')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 옵션 */}
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2.5">방 옵션</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { on: vacancyOnly, set: setVacancyOnly, label: '빈방 있음', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+                    { on: mealsOnly, set: setMealsOnly, label: '식사 제공', activeCls: 'bg-green-600 text-white border-green-600' },
+                    { on: privateBathOnly, set: setPrivateBathOnly, label: '개별 화장실', activeCls: 'bg-indigo-600 text-white border-indigo-600' },
+                    { on: femaleSafeOnly, set: setFemaleSafeOnly, label: '여성 안심', activeCls: 'bg-pink-500 text-white border-pink-500' },
+                    { on: elevatorOnly, set: setElevatorOnly, label: '엘리베이터', activeCls: 'bg-gray-700 text-white border-gray-700' },
+                    { on: petsOnly, set: setPetsOnly, label: '반려동물 가능', activeCls: 'bg-amber-500 text-white border-amber-500' },
+                  ].map((o, i) => (
+                    <button key={i} onClick={() => o.set(!o.on)}
+                      className={`text-sm py-3 rounded-xl border font-medium ${o.on ? o.activeCls : 'bg-white text-gray-600 border-gray-200'}`}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4">
+              <button onClick={() => setShowFilterSheet(false)}
+                className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm">
+                결과 {total.toLocaleString()}개 보기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
