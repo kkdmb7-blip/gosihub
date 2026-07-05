@@ -6,7 +6,6 @@ import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
   const pathname = usePathname()
-  const [menuOpen, setMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
@@ -28,27 +27,19 @@ export default function Navbar() {
   const ADMIN_ID = '9d38acc4-d314-4e16-8316-9520c9e335d3'
   const isAdmin = user?.id === ADMIN_ID
 
-  const navLinks = [
-    { href: '/', label: '방 찾기' },
-    { href: '/register', label: '방 등록' },
-    { href: '/mypage', label: '내 매물' },
-    ...(isAdmin ? [{ href: '/admin', label: '관리자' }] : []),
-  ]
-
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-100">
+      <div className="max-w-lg md:max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/" className="font-bold text-lg text-blue-600 tracking-tight">
           고시허브
         </Link>
 
+        {/* 데스크탑 네비 */}
         <div className="hidden md:flex items-center gap-6">
-          {navLinks.map(l => (
-            <Link key={l.href} href={l.href}
-              className={`text-sm font-medium ${pathname === l.href ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-              {l.label}
-            </Link>
-          ))}
+          <Link href="/" className={`text-sm font-medium ${pathname === '/' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>방 찾기</Link>
+          <Link href="/register" className={`text-sm font-medium ${pathname === '/register' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>방 등록</Link>
+          <Link href="/mypage" className={`text-sm font-medium ${pathname === '/mypage' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>내 매물</Link>
+          {isAdmin && <Link href="/admin" className={`text-sm font-medium ${pathname === '/admin' ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>관리자</Link>}
           {user ? (
             <button onClick={logout}
               className="text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50 transition-colors">
@@ -62,32 +53,20 @@ export default function Navbar() {
           )}
         </div>
 
-        <button className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)}>
-          <div className="w-5 h-0.5 bg-gray-600 mb-1" />
-          <div className="w-5 h-0.5 bg-gray-600 mb-1" />
-          <div className="w-5 h-0.5 bg-gray-600" />
-        </button>
-      </div>
-
-      {menuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-3 flex flex-col gap-3">
-          {navLinks.map(l => (
-            <Link key={l.href} href={l.href} className="text-sm font-medium text-gray-700" onClick={() => setMenuOpen(false)}>
-              {l.label}
-            </Link>
-          ))}
+        {/* 모바일: 로그인 버튼만 (주 네비는 BottomNav) */}
+        <div className="md:hidden">
           {user ? (
-            <button onClick={logout} className="text-sm text-gray-500 border border-gray-200 px-4 py-2 rounded-full">
+            <button onClick={logout} className="text-xs text-gray-500 border border-gray-200 px-3 py-1.5 rounded-full">
               로그아웃
             </button>
           ) : (
             <button onClick={() => window.location.href = '/api/auth/kakao'}
-              className="bg-yellow-400 text-yellow-900 font-bold text-sm px-4 py-2 rounded-full w-full">
+              className="bg-yellow-400 text-yellow-900 font-bold text-xs px-3 py-1.5 rounded-full">
               카카오 로그인
             </button>
           )}
         </div>
-      )}
+      </div>
     </nav>
   )
 }

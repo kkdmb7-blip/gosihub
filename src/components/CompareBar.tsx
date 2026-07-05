@@ -17,7 +17,7 @@ export default function CompareBar() {
   if (ids.length === 0) return null
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+    <div className="fixed bottom-20 md:bottom-4 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
       <div className="bg-white rounded-2xl shadow-xl border border-gray-200 px-4 py-3 flex items-center gap-3 pointer-events-auto max-w-lg w-full">
         <div className="flex gap-1.5 flex-1">
           {[0, 1, 2].map(i => (

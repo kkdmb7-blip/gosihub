@@ -218,20 +218,22 @@ export default function MyPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6">
-      {/* 탭 */}
-      <div className="flex bg-gray-100 rounded-xl p-1 mb-6 overflow-x-auto">
-        {[
-          { key: 'rooms', label: `내 매물 ${rooms.length}` },
-          { key: 'favorites', label: `즐겨찾기 ${favRooms.length}` },
-          { key: 'tenant', label: '입주관리' },
-          { key: 'alerts', label: '방 알람' },
-        ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key as any)}
-            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap px-2 ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-            {t.label}
-          </button>
-        ))}
+    <div className="max-w-lg mx-auto px-4 py-4">
+      {/* 탭 (sticky) */}
+      <div className="sticky top-14 z-30 -mx-4 px-4 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-100 mb-4">
+        <div className="flex bg-gray-100 rounded-xl p-1 overflow-x-auto">
+          {[
+            { key: 'rooms', label: `내 매물 ${rooms.length}` },
+            { key: 'favorites', label: `즐겨찾기 ${favRooms.length}` },
+            { key: 'tenant', label: '입주관리' },
+            { key: 'alerts', label: '방 알람' },
+          ].map(t => (
+            <button key={t.key} onClick={() => setTab(t.key as any)}
+              className={`flex-1 py-2.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap px-2 ${tab === t.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 내 매물 탭 */}

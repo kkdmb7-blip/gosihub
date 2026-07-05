@@ -442,7 +442,7 @@ export default function HomePage() {
                 {hasMore && (
                   <div className="text-center mt-6">
                     <button onClick={loadMore} disabled={loadingMore}
-                      className="px-8 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-all shadow-sm">
+                      className="w-full md:w-auto md:px-10 py-3.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-all shadow-sm">
                       {loadingMore ? '불러오는 중...' : `더 보기 (${rooms.length}/${total.toLocaleString()})`}
                     </button>
                   </div>

@@ -635,7 +635,8 @@ export default function RoomDetailPage() {
       </div>
 
       {/* 고정 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 max-w-2xl mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex gap-2 z-40" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0) + 12px)' }}>
+        <div className="max-w-2xl mx-auto flex gap-2 w-full">
         {/* 즐겨찾기 */}
         <button onClick={toggleFavorite}
           className={`w-12 flex-shrink-0 flex items-center justify-center rounded-xl border transition-all ${favorited ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
@@ -673,6 +674,7 @@ export default function RoomDetailPage() {
             채팅
           </a>
         )}
+        </div>
       </div>
     </div>
   )

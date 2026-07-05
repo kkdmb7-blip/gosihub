@@ -68,14 +68,14 @@ function CompareContent() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 pb-20">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.back()} className="text-sm text-gray-500 flex items-center gap-1">← 돌아가기</button>
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={() => router.back()} className="text-sm text-gray-500 flex items-center gap-1 py-2">← 돌아가기</button>
         <h1 className="text-lg font-bold text-gray-900">방 비교</h1>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto">
         {/* 헤더: 방 사진/제목 */}
-        <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: `120px repeat(${rooms.length}, 1fr)` }}>
+        <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: `100px repeat(${rooms.length}, minmax(140px, 1fr))`, minWidth: `${100 + rooms.length * 140}px` }}>
           <div className="p-3 bg-gray-50 flex items-end">
             <span className="text-xs text-gray-400 font-medium">항목</span>
           </div>
@@ -195,7 +195,7 @@ function CompareContent() {
             )
           },
         ].map(({ label, render }) => (
-          <div key={label} className="grid" style={{ gridTemplateColumns: `120px repeat(${rooms.length}, 1fr)` }}>
+          <div key={label} className="grid" style={{ gridTemplateColumns: `100px repeat(${rooms.length}, minmax(140px, 1fr))`, minWidth: `${100 + rooms.length * 140}px` }}>
             <div className="p-3 bg-gray-50 border-b border-gray-50 flex items-center">
               <span className="text-xs font-medium text-gray-500">{label}</span>
             </div>
@@ -206,7 +206,7 @@ function CompareContent() {
         ))}
 
         {/* 연락처 버튼 행 */}
-        <div className="grid p-3 gap-2" style={{ gridTemplateColumns: `120px repeat(${rooms.length}, 1fr)` }}>
+        <div className="grid p-3 gap-2" style={{ gridTemplateColumns: `100px repeat(${rooms.length}, minmax(140px, 1fr))`, minWidth: `${100 + rooms.length * 140}px` }}>
           <div className="flex items-center">
             <span className="text-xs font-medium text-gray-500">바로가기</span>
           </div>
