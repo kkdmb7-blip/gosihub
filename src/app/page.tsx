@@ -419,7 +419,7 @@ export default function HomePage() {
             {activeFilters > 0 && (
               <button onClick={() => { setSelectedTypes([]); setSelectedGender(''); setPriceIdx(0); setMealsOnly(false); setVacancyOnly(false); setPetsOnly(false); setPrivateBathOnly(false); setFemaleSafeOnly(false); setElevatorOnly(false) }}
                 className="text-xs px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100 font-medium">
-                초기화 {activeFilters}
+                필터 초기화
               </button>
             )}
           </div>
