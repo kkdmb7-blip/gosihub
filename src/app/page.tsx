@@ -33,6 +33,7 @@ export default function HomePage() {
   const kakaoMap = useRef<any>(null)
   const markersRef = useRef<any[]>([])
   const mapRoomsRef = useRef<Room[]>([])
+  const boundsFetchTimer = useRef<any>(null)
 
   const [rooms, setRooms] = useState<Room[]>([])
   const [total, setTotal] = useState(0)
@@ -88,10 +89,11 @@ export default function HomePage() {
 
   useEffect(() => {
     if (view === 'map') {
-      fetchMapRooms()
+      // fetchMapRooms는 createMap 내부에서 뷰포트 기준으로 호출됨
       const t = setTimeout(initMap, 100)
       return () => clearTimeout(t)
     } else {
+      markersRef.current.forEach(m => m.setMap(null))
       kakaoMap.current = null
       markersRef.current = []
     }
@@ -223,13 +225,26 @@ export default function HomePage() {
     setUserPos(null)
   }
 
-  async function fetchMapRooms() {
+  async function fetchMapRooms(useBounds = true) {
     let q: any = supabase.from('rooms')
       .select('id, title, price, lat, lng, type, address')
       .eq('is_active', true)
-      .not('lat', 'is', null)
-      .not('lng', 'is', null)
-      .limit(500)
+      .gte('lat', 33).lte('lat', 39)
+      .gte('lng', 124).lte('lng', 132)
+      .limit(1000)
+
+    // 뷰포트 기반 페칭: 지도에 보이는 영역만 쿼리 (버퍼 20%)
+    if (useBounds && kakaoMap.current) {
+      const b = kakaoMap.current.getBounds()
+      const sw = b.getSouthWest(), ne = b.getNorthEast()
+      const latPad = (ne.getLat() - sw.getLat()) * 0.2
+      const lngPad = (ne.getLng() - sw.getLng()) * 0.2
+      q = q.gte('lat', Math.max(33, sw.getLat() - latPad))
+           .lte('lat', Math.min(39, ne.getLat() + latPad))
+           .gte('lng', Math.max(124, sw.getLng() - lngPad))
+           .lte('lng', Math.min(132, ne.getLng() + lngPad))
+    }
+
     if (selectedRegion === '기타') {
       for (const c of MAIN_CITIES) q = q.not('address', 'ilike', `%${c}%`)
     } else if (selectedRegion) {
@@ -270,8 +285,16 @@ export default function HomePage() {
     const center = new window.kakao.maps.LatLng(37.5665, 126.9780)
     kakaoMap.current = new window.kakao.maps.Map(mapRef.current, { center, level: 7 })
     window.kakao.maps.event.addListener(kakaoMap.current, 'bounds_changed', filterByBounds)
+    // 드래그·줌 종료(idle) 시 뷰포트 기반 재페칭 (300ms 디바운스)
+    window.kakao.maps.event.addListener(kakaoMap.current, 'idle', () => {
+      if (nearbyMode) return
+      if (boundsFetchTimer.current) clearTimeout(boundsFetchTimer.current)
+      boundsFetchTimer.current = setTimeout(() => fetchMapRooms(true), 300)
+    })
     renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
     filterByBounds()
+    // 초기 진입 시에도 현재 뷰포트로 재페칭
+    fetchMapRooms(true)
   }
 
   function initMap() {
