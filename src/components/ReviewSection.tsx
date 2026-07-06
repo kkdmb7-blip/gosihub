@@ -9,6 +9,7 @@ interface Review {
   rating: number
   content: string
   created_at: string
+  is_verified?: boolean
 }
 
 const REASONS = ['허위정보', '욕설/비방', '광고/스팸', '기타']
@@ -56,6 +57,7 @@ export default function ReviewSection({ roomId, ownerId }: { roomId: string; own
       .from('reviews')
       .select('*')
       .eq('room_id', roomId)
+      .order('is_verified', { ascending: false })
       .order('created_at', { ascending: false })
     if (data) {
       setReviews(data)
@@ -70,12 +72,17 @@ export default function ReviewSection({ roomId, ownerId }: { roomId: string; own
     setSubmitting(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { alert('로그인이 필요합니다'); setSubmitting(false); return }
+    // 실거주 인증: tenant_rooms에 이 방+본인 조합이 있으면 인증 리뷰
+    const { data: tr } = await supabase.from('tenant_rooms')
+      .select('id').eq('user_id', user.id).eq('room_id', roomId).limit(1)
+    const isVerified = !!(tr && tr.length > 0)
     const { error } = await supabase.from('reviews').insert({
       room_id: roomId,
       user_id: user.id,
       user_name: user.user_metadata?.name || user.email?.split('@')[0] || '익명',
       rating,
       content: content.trim(),
+      is_verified: isVerified,
     })
     setSubmitting(false)
     if (error) { alert(error.message.includes('unique') ? '이미 리뷰를 작성하셨어요' : '오류: ' + error.message); return }
@@ -107,17 +114,24 @@ export default function ReviewSection({ roomId, ownerId }: { roomId: string; own
   const avgRating = reviews.length > 0
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : null
+  const verifiedCount = reviews.filter(r => r.is_verified).length
 
   return (
     <div className="mt-6 border-t border-gray-100 pt-6">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-bold text-gray-800">입주 후기</span>
           {avgRating && (
             <span className="flex items-center gap-1 text-sm text-amber-500 font-bold">
               ★ {avgRating}
               <span className="text-gray-400 font-normal">({reviews.length})</span>
+            </span>
+          )}
+          {verifiedCount > 0 && (
+            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              실거주 {verifiedCount}
             </span>
           )}
         </div>
@@ -128,6 +142,7 @@ export default function ReviewSection({ roomId, ownerId }: { roomId: string; own
           </button>
         )}
       </div>
+      <p className="text-[11px] text-gray-400 mb-4">마이페이지 &gt; 입주관리에 등록하면 <span className="text-emerald-600 font-medium">실거주 인증</span> 뱃지가 자동으로 붙어요</p>
 
       {/* 리뷰 작성 폼 */}
       {showForm && (
@@ -158,9 +173,15 @@ export default function ReviewSection({ roomId, ownerId }: { roomId: string; own
       {myReview && (
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-3">
           <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Stars value={myReview.rating} />
               <span className="text-xs text-blue-600 font-medium">내 리뷰</span>
+              {myReview.is_verified && (
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
+                  실거주 인증
+                </span>
+              )}
             </div>
             <button onClick={deleteMyReview} className="text-xs text-gray-400 hover:text-red-500">삭제</button>
           </div>
@@ -175,13 +196,19 @@ export default function ReviewSection({ roomId, ownerId }: { roomId: string; own
         <div className="space-y-3">
           {reviews.filter(r => r.user_id !== user?.id).map(r => (
             <div key={r.id} className="border border-gray-100 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <div className="flex items-center gap-2 flex-wrap">
                   <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
                     {r.user_name[0]}
                   </div>
                   <span className="text-sm font-medium text-gray-700">{r.user_name}</span>
                   <Stars value={r.rating} />
+                  {r.is_verified && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      실거주 인증
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString('ko-KR')}</span>

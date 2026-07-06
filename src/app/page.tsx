@@ -32,6 +32,7 @@ export default function HomePage() {
   const mapRef = useRef<HTMLDivElement>(null)
   const kakaoMap = useRef<any>(null)
   const markersRef = useRef<any[]>([])
+  const clustererRef = useRef<any>(null)
   const mapRoomsRef = useRef<Room[]>([])
   const boundsFetchTimer = useRef<any>(null)
 
@@ -95,6 +96,7 @@ export default function HomePage() {
       return () => clearTimeout(t)
     } else {
       markersRef.current.forEach(m => m.setMap(null))
+      if (clustererRef.current) { clustererRef.current.clear(); clustererRef.current = null }
       kakaoMap.current = null
       markersRef.current = []
     }
@@ -292,6 +294,10 @@ export default function HomePage() {
       if (boundsFetchTimer.current) clearTimeout(boundsFetchTimer.current)
       boundsFetchTimer.current = setTimeout(() => fetchMapRooms(true), 300)
     })
+    // 줌 변경 시 클러스터↔가격오버레이 자동 전환
+    window.kakao.maps.event.addListener(kakaoMap.current, 'zoom_changed', () => {
+      renderMarkers(mapRoomsRef.current)
+    })
     renderMarkers(nearbyMode ? nearbyRooms : mapRooms)
     filterByBounds()
     // 초기 진입 시에도 현재 뷰포트로 재페칭
@@ -299,14 +305,15 @@ export default function HomePage() {
   }
 
   function initMap() {
-    if (window.kakao?.maps) {
+    if (window.kakao?.maps?.MarkerClusterer) {
       window.kakao.maps.load(createMap)
       return
     }
     if (document.getElementById('kakao-map-script')) return
     const script = document.createElement('script')
     script.id = 'kakao-map-script'
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`
+    // clusterer 라이브러리 포함
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=clusterer`
     script.onload = () => window.kakao.maps.load(createMap)
     script.onerror = () => console.error('카카오 지도 스크립트 로드 실패')
     document.head.appendChild(script)
@@ -314,16 +321,50 @@ export default function HomePage() {
 
   function renderMarkers(roomList: Room[]) {
     if (!kakaoMap.current) return
+    // 기존 마커·클러스터 정리
     markersRef.current.forEach(m => m.setMap(null))
-    markersRef.current = roomList
-      .filter(r => r.lat && r.lng)
-      .map(room => {
+    markersRef.current = []
+    if (clustererRef.current) clustererRef.current.clear()
+
+    const valid = roomList.filter(r => r.lat && r.lng)
+    const level = kakaoMap.current.getLevel()
+
+    // 줌 아웃 상태(level 7 이상): 클러스터링만 (Airbnb 스타일 — 뭉쳐서 개수 표시)
+    if (level >= 7 && window.kakao.maps.MarkerClusterer) {
+      if (!clustererRef.current) {
+        clustererRef.current = new window.kakao.maps.MarkerClusterer({
+          map: kakaoMap.current,
+          averageCenter: true,
+          minLevel: 6,
+          disableClickZoom: false,
+          styles: [
+            { width: '36px', height: '36px', background: 'rgba(37,99,235,0.85)', color: '#fff', borderRadius: '18px', textAlign: 'center', lineHeight: '36px', fontSize: '12px', fontWeight: '700', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' },
+            { width: '44px', height: '44px', background: 'rgba(37,99,235,0.9)', color: '#fff', borderRadius: '22px', textAlign: 'center', lineHeight: '44px', fontSize: '13px', fontWeight: '700', border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' },
+            { width: '52px', height: '52px', background: 'rgba(220,38,38,0.9)', color: '#fff', borderRadius: '26px', textAlign: 'center', lineHeight: '52px', fontSize: '14px', fontWeight: '700', border: '2px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.25)' },
+          ],
+        })
+      }
+      const markers = valid.map(room => {
         const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
-        const content = `<div onclick="window.location.href='/rooms/${room.id}'" style="background:white;border:2px solid #2563eb;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.12);cursor:pointer;">${room.price}만원</div>`
-        const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content })
-        overlay.setMap(kakaoMap.current)
-        return overlay
+        const m = new window.kakao.maps.Marker({ position: pos })
+        window.kakao.maps.event.addListener(m, 'click', () => {
+          window.location.href = `/rooms/${room.id}`
+        })
+        return m
       })
+      clustererRef.current.addMarkers(markers)
+      markersRef.current = markers
+    } else {
+      // 줌 인 상태(level 6 이하): 개별 가격 오버레이
+      const overlays = valid.map(room => {
+        const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
+        const content = `<div onclick="window.location.href='/rooms/${room.id}'" style="background:white;border:1.5px solid #2563eb;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);cursor:pointer;">${room.price}만</div>`
+        const o = new window.kakao.maps.CustomOverlay({ position: pos, content })
+        o.setMap(kakaoMap.current)
+        return o
+      })
+      markersRef.current = overlays
+    }
   }
 
   const displayRooms = nearbyMode ? nearbyRooms : rooms

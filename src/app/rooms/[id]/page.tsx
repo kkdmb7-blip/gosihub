@@ -35,6 +35,7 @@ export default function RoomDetailPage() {
   const [reportNote, setReportNote] = useState('')
   const [reportLoading, setReportLoading] = useState(false)
   const [reportDone, setReportDone] = useState(false)
+  const [priceStats, setPriceStats] = useState<{avgPrice: number; avgFee: number; count: number} | null>(null)
   const mapRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -52,7 +53,23 @@ export default function RoomDetailPage() {
     initDetailMap()
     fetchSubway(room.lat, room.lng)
     fetchNearbyPlaces(room.lat, room.lng)
+    fetchPriceStats(room.lat, room.lng, room.type as string, room.id)
   }, [room])
+
+  async function fetchPriceStats(lat: number, lng: number, type: string, currentId: string) {
+    // 반경 약 500m (0.005도) 내 같은 종류 매물 평균
+    const { data } = await supabase.from('rooms')
+      .select('price, management_fee')
+      .eq('type', type)
+      .eq('is_active', true)
+      .neq('id', currentId)
+      .gte('lat', lat - 0.005).lte('lat', lat + 0.005)
+      .gte('lng', lng - 0.005).lte('lng', lng + 0.005)
+    if (!data || data.length === 0) return
+    const avgPrice = Math.round(data.reduce((s: number, r: any) => s + (r.price || 0), 0) / data.length)
+    const avgFee = Math.round(data.reduce((s: number, r: any) => s + (r.management_fee || 0), 0) / data.length)
+    setPriceStats({ avgPrice, avgFee, count: data.length })
+  }
 
   async function fetchRoom(roomId: string) {
     const { data } = await supabase.from('rooms').select('*').eq('id', roomId).single()
@@ -482,6 +499,42 @@ export default function RoomDetailPage() {
           <p className="text-sm text-green-800 font-medium">입주 가능일: {room.move_in_date}</p>
         </div>
       )}
+
+      {/* 지역 시세 비교 (호갱노노 스타일) */}
+      {priceStats && (() => {
+        const myTotal = room.price + (room.management_fee || 0)
+        const avgTotal = priceStats.avgPrice + priceStats.avgFee
+        const diff = myTotal - avgTotal
+        const cheaper = diff < 0
+        const pct = avgTotal > 0 ? Math.round(Math.abs(diff) / avgTotal * 100) : 0
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-3 shadow-sm">
+            <h2 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-1.5">
+              이 지역 시세
+              <span className="text-[10px] font-normal text-gray-400">반경 500m · 같은 종류 {priceStats.count}개</span>
+            </h2>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="bg-gray-50 rounded-xl p-3 text-center">
+                <p className="text-[11px] text-gray-500 mb-1">지역 평균</p>
+                <p className="text-lg font-bold text-gray-800">{avgTotal}<span className="text-xs font-medium ml-0.5">만</span></p>
+                <p className="text-[10px] text-gray-400 mt-0.5">월세 {priceStats.avgPrice} + 관리비 {priceStats.avgFee}</p>
+              </div>
+              <div className={`${cheaper ? 'bg-blue-50' : 'bg-orange-50'} rounded-xl p-3 text-center`}>
+                <p className={`text-[11px] mb-1 ${cheaper ? 'text-blue-600' : 'text-orange-600'}`}>이 방</p>
+                <p className={`text-lg font-bold ${cheaper ? 'text-blue-700' : 'text-orange-700'}`}>{myTotal}<span className="text-xs font-medium ml-0.5">만</span></p>
+                <p className={`text-[10px] mt-0.5 ${cheaper ? 'text-blue-500' : 'text-orange-500'}`}>월세 {room.price} + 관리비 {room.management_fee || 0}</p>
+              </div>
+            </div>
+            <div className={`text-center py-2.5 rounded-xl text-sm font-semibold ${cheaper ? 'bg-blue-50 text-blue-700' : diff === 0 ? 'bg-gray-50 text-gray-600' : 'bg-orange-50 text-orange-700'}`}>
+              {diff === 0
+                ? '지역 평균과 같은 시세'
+                : cheaper
+                  ? `지역 평균보다 ${Math.abs(diff)}만원 (${pct}%) 저렴 ⬇`
+                  : `지역 평균보다 ${diff}만원 (${pct}%) 비쌈 ⬆`}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* 주변 편의시설 */}
       {nearbyPlaces.length > 0 && (
