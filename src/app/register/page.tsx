@@ -32,6 +32,7 @@ export default function RegisterPage() {
   const [photos, setPhotos] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
   const [photoCategories, setPhotoCategories] = useState<string[]>([])
+  const [agreed, setAgreed] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -145,6 +146,7 @@ export default function RegisterPage() {
   async function submit() {
     const err = validateStep(3)
     if (err) { alert(err); return }
+    if (!agreed) { alert('이용약관·개인정보처리방침에 동의해주세요'); return }
     setLoading(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -478,9 +480,19 @@ export default function RegisterPage() {
             <p className="text-gray-600"><span className="text-gray-400">사진</span> {photos.length}장</p>
           </div>
 
+          {/* 약관 동의 */}
+          <label className="flex items-start gap-2 bg-gray-50 rounded-xl p-3 cursor-pointer">
+            <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-blue-600" />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              등록 매물의 <b>본인 소유·관리 권한을 보유</b>하고 있으며, 정보의 정확성을 보장합니다. 허위 매물 등록 시 서비스 제한에 동의합니다.<br />
+              <a href="/terms" target="_blank" className="text-blue-600 underline">이용약관</a> 및 <a href="/privacy" target="_blank" className="text-blue-600 underline">개인정보처리방침</a>에 동의합니다.
+            </span>
+          </label>
+
           <div className="flex gap-2">
             <button onClick={() => setStep(2)} className="flex-1 border border-gray-200 text-gray-600 font-medium py-3.5 rounded-xl text-sm">← 이전</button>
-            <button onClick={submit} disabled={loading}
+            <button onClick={submit} disabled={loading || !agreed}
               className="flex-1 bg-blue-600 text-white font-bold py-3.5 rounded-xl text-sm disabled:opacity-50">
               {loading ? '등록 중...' : '매물 등록 완료'}
             </button>

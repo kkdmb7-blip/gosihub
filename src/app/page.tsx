@@ -438,6 +438,17 @@ export default function HomePage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-4">
+        {/* 베타 서비스 안내 */}
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3.5 mb-4 flex items-start gap-2.5">
+          <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">BETA</span>
+          <div className="flex-1">
+            <p className="text-xs text-blue-800 font-medium leading-relaxed">현재 베타 서비스로 매물을 모으고 있어요.</p>
+            <p className="text-[11px] text-blue-600 mt-0.5">
+              고시원·고시텔 업주라면 <a href="/register" className="underline font-semibold">지금 무료로 등록</a>하고 임차인과 바로 매칭받으세요.
+            </p>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-gray-500">
             {loading ? '검색 중...' : nearbyMode ? `내 주변 ${total}개` : `${selectedRegion || '전국'} 총 ${total.toLocaleString()}개 매물`}
