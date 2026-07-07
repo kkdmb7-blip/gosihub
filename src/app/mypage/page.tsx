@@ -69,6 +69,7 @@ export default function MyPage() {
 
   async function requestRentPayment() {
     if (!payingFor || !payPhone.trim()) return
+    if (payingFor.rooms.price == null) { window.alert('가격 미등록 매물은 결제할 수 없어요'); return }
     setPaying(true)
     const paymentId = `rent_${user.id.slice(0, 8)}_${Date.now()}`
     const amount = payingFor.rooms.price * 10000
@@ -455,8 +456,9 @@ export default function MyPage() {
 
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => { setPayingFor(tr); setPayPhone('') }}
-                        className="flex-1 text-xs bg-blue-600 text-white font-bold py-2 rounded-xl">
-                        월세 결제 {tr.rooms?.price}만원
+                        disabled={tr.rooms?.price == null}
+                        className="flex-1 text-xs bg-blue-600 text-white font-bold py-2 rounded-xl disabled:opacity-40">
+                        {tr.rooms?.price != null ? `월세 결제 ${tr.rooms.price}만원` : '가격 미등록'}
                       </button>
                       <button onClick={() => deleteTenantRoom(tr.id)}
                         className="text-xs text-red-400 border border-red-100 px-3 py-2 rounded-xl">
