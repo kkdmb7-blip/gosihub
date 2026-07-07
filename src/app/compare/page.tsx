@@ -62,8 +62,9 @@ function CompareContent() {
     return <div className="text-center py-24 text-gray-400 text-sm">로딩 중...</div>
   }
 
-  const minPrice = Math.min(...rooms.map(r => r.price))
-  const minTotal = Math.min(...rooms.map(r => r.price + (r.management_fee || 0)))
+  const pricedRooms = rooms.filter(r => r.price != null)
+  const minPrice = pricedRooms.length ? Math.min(...pricedRooms.map(r => r.price!)) : 0
+  const minTotal = pricedRooms.length ? Math.min(...pricedRooms.map(r => r.price! + (r.management_fee || 0))) : 0
   const maxArea = Math.max(...rooms.map(r => r.area || 0))
 
   return (
@@ -102,19 +103,19 @@ function CompareContent() {
         {[
           {
             label: '월세',
-            render: (r: Room) => <Cell value={`${r.price}만원/월`} best={r.price === minPrice} />
+            render: (r: Room) => <Cell value={r.price != null ? `${r.price}만원/월` : '미등록'} best={r.price != null && r.price === minPrice} />
           },
           {
             label: '관리비',
-            render: (r: Room) => <Cell value={r.management_fee > 0 ? `${r.management_fee}만원` : '없음'} />
+            render: (r: Room) => <Cell value={(r.management_fee ?? 0) > 0 ? `${r.management_fee}만원` : '없음'} />
           },
           {
             label: '총 월 부담',
-            render: (r: Room) => <Cell value={`${r.price + (r.management_fee || 0)}만원`} best={(r.price + (r.management_fee || 0)) === minTotal} />
+            render: (r: Room) => <Cell value={r.price != null ? `${r.price + (r.management_fee || 0)}만원` : '미등록'} best={r.price != null && (r.price + (r.management_fee || 0)) === minTotal} />
           },
           {
             label: '보증금',
-            render: (r: Room) => <Cell value={r.deposit > 0 ? `${r.deposit}만원` : '없음'} />
+            render: (r: Room) => <Cell value={(r.deposit ?? 0) > 0 ? `${r.deposit}만원` : '없음'} />
           },
           {
             label: '면적',

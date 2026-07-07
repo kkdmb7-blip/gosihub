@@ -271,7 +271,7 @@ export default function MyPage() {
                         </div>
                         <p className="text-sm font-semibold text-gray-900 truncate">{room.title}</p>
                         <p className="text-xs text-gray-400 truncate">{room.address}</p>
-                        <p className="text-sm font-bold text-blue-600 mt-0.5">{room.price}만원/월</p>
+                        <p className="text-sm font-bold text-blue-600 mt-0.5">{room.price != null ? `${room.price}만원/월` : '가격 미등록'}</p>
                       </div>
                     </div>
 

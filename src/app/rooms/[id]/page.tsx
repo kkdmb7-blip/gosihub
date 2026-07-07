@@ -53,16 +53,18 @@ export default function RoomDetailPage() {
     initDetailMap()
     fetchSubway(room.lat, room.lng)
     fetchNearbyPlaces(room.lat, room.lng)
-    fetchPriceStats(room.lat, room.lng, room.type as string, room.id)
+    // 가격 정보 있을 때만 지역 시세 비교
+    if (room.price != null) fetchPriceStats(room.lat, room.lng, room.type as string, room.id)
   }, [room])
 
   async function fetchPriceStats(lat: number, lng: number, type: string, currentId: string) {
-    // 반경 약 500m (0.005도) 내 같은 종류 매물 평균
+    // 반경 약 500m (0.005도) 내 같은 종류 · 가격 있는 매물만 평균
     const { data } = await supabase.from('rooms')
       .select('price, management_fee')
       .eq('type', type)
       .eq('is_active', true)
       .neq('id', currentId)
+      .not('price', 'is', null)
       .gte('lat', lat - 0.005).lte('lat', lat + 0.005)
       .gte('lng', lng - 0.005).lte('lng', lng + 0.005)
     if (!data || data.length === 0) return
@@ -225,7 +227,7 @@ export default function RoomDetailPage() {
     if (!room) return
     const content: any = {
       title: room.title,
-      description: `${room.address} | 월 ${room.price}만원`,
+      description: `${room.address}${room.price != null ? ` | 월 ${room.price}만원` : ''}`,
       link: { mobileWebUrl: url, webUrl: url },
     }
     if (room.photos?.[0]) content.imageUrl = room.photos[0]
@@ -392,21 +394,30 @@ export default function RoomDetailPage() {
           </div>
         )}
 
-        <div className="flex items-baseline gap-2 mb-2 flex-wrap">
-          {room.deposit > 0 && (
-            <span className="text-sm text-gray-500">보증금 {room.deposit.toLocaleString()}만원</span>
-          )}
-          <span className="text-2xl font-bold text-gray-900">{room.price.toLocaleString()}만원</span>
-          <span className="text-gray-400 text-sm">/월</span>
-          {room.management_fee > 0 && (
-            <span className="text-sm text-gray-500">+ 관리비 {room.management_fee.toLocaleString()}만원</span>
-          )}
-        </div>
-        {room.management_fee > 0 && (
-          <div className="bg-blue-50 rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
-            <span className="text-xs text-blue-600">월 총 부담액</span>
-            <span className="text-sm font-bold text-blue-700">{(room.price + room.management_fee).toLocaleString()}만원</span>
+        {room.price == null ? (
+          <div className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 mb-3">
+            <p className="text-sm text-gray-600">가격 정보 미등록</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">업주 등록 후 실제 월세·보증금·관리비가 표시됩니다</p>
           </div>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-2 mb-2 flex-wrap">
+              {(room.deposit ?? 0) > 0 && (
+                <span className="text-sm text-gray-500">보증금 {room.deposit!.toLocaleString()}만원</span>
+              )}
+              <span className="text-2xl font-bold text-gray-900">{room.price.toLocaleString()}만원</span>
+              <span className="text-gray-400 text-sm">/월</span>
+              {(room.management_fee ?? 0) > 0 && (
+                <span className="text-sm text-gray-500">+ 관리비 {room.management_fee!.toLocaleString()}만원</span>
+              )}
+            </div>
+            {(room.management_fee ?? 0) > 0 && (
+              <div className="bg-blue-50 rounded-xl px-3 py-2 mb-3 flex items-center justify-between">
+                <span className="text-xs text-blue-600">월 총 부담액</span>
+                <span className="text-sm font-bold text-blue-700">{(room.price + (room.management_fee ?? 0)).toLocaleString()}만원</span>
+              </div>
+            )}
+          </>
         )}
 
         <div className="grid grid-cols-3 gap-2 mb-3 text-center">
@@ -516,7 +527,7 @@ export default function RoomDetailPage() {
       )}
 
       {/* 지역 시세 비교 (호갱노노 스타일) */}
-      {priceStats && (() => {
+      {priceStats && room.price != null && (() => {
         const myTotal = room.price + (room.management_fee || 0)
         const avgTotal = priceStats.avgPrice + priceStats.avgFee
         const diff = myTotal - avgTotal

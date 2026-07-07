@@ -125,15 +125,15 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
 
         <div className="p-3 space-y-1.5">
           {/* 가격 라인 (가장 큰 정보) */}
-          {isPublicData ? (
-            <div className="text-[11px] text-gray-500 italic">가격 정보 미등록 · 업주 등록 대기 중</div>
+          {room.price == null ? (
+            <div className="text-[11px] text-gray-500 italic">가격 정보 미등록</div>
           ) : (
             <div className="flex items-baseline gap-1 flex-wrap">
-              {room.deposit > 0 && (
+              {(room.deposit ?? 0) > 0 && (
                 <span className="text-[11px] text-gray-500">보증 {room.deposit}</span>
               )}
               <span className="font-bold text-base text-gray-900 leading-none">{room.price}<span className="text-xs font-medium">만</span></span>
-              {room.management_fee > 0 && (
+              {(room.management_fee ?? 0) > 0 && (
                 <span className="text-[11px] text-gray-500">+{room.management_fee}만</span>
               )}
             </div>

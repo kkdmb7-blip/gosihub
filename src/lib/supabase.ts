@@ -25,8 +25,8 @@ export interface Room {
   id: string
   title: string
   type: RoomType
-  price: number
-  deposit: number
+  price: number | null
+  deposit: number | null
   address: string
   address_detail?: string
   lat: number
@@ -52,7 +52,7 @@ export interface Room {
   total_floors?: number
   move_in_date?: string
   has_vacancy: boolean
-  management_fee: number
+  management_fee: number | null
   min_contract?: string
   pets_allowed: boolean
   photo_categories?: string[]

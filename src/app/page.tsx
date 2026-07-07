@@ -358,8 +358,8 @@ export default function HomePage() {
       // 줌 인 상태(level 6 이하): 개별 마커
       const overlays = valid.map(room => {
         const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
-        const isPublic = (room as any).source === 'public_data' && !(room as any).is_claimed
-        const content = isPublic
+        const noPrice = room.price == null
+        const content = noPrice
           ? `<div onclick="window.location.href='/rooms/${room.id}'" style="background:rgba(255,255,255,0.9);border:1.5px dashed #9ca3af;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;color:#6b7280;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.1);cursor:pointer;">${room.title.length > 8 ? room.title.slice(0, 7) + '…' : room.title}</div>`
           : `<div onclick="window.location.href='/rooms/${room.id}'" style="background:white;border:1.5px solid #2563eb;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);cursor:pointer;">${room.price}만</div>`
         const o = new window.kakao.maps.CustomOverlay({ position: pos, content })
