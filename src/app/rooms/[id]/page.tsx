@@ -284,6 +284,21 @@ export default function RoomDetailPage() {
         ← 목록으로
       </button>
 
+      {/* 공공데이터 매물 배너 */}
+      {(room as any).source === 'public_data' && !(room as any).is_claimed && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-4">
+          <div className="flex items-start gap-2.5">
+            <span className="text-[10px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">공공데이터</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-amber-900 mb-0.5">아직 업주가 등록하지 않은 매물이에요</p>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                이 정보는 소상공인시장진흥공단 공공데이터(상호·주소·좌표)만 표시된 상태입니다. 정확한 가격·사진·시설 정보는 업주가 등록해야 확인 가능합니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 영상 룸투어 */}
       {room.video_url && getYoutubeEmbedUrl(room.video_url) && (
         <div className="mb-4">
@@ -588,14 +603,28 @@ export default function RoomDetailPage() {
       )}
 
       {/* 내 매물 클레임 */}
-      {!room.owner_id && user && !claimed && (
+      {!room.owner_id && !claimed && (
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-3">
           <p className="text-sm font-semibold text-blue-800 mb-0.5">이 매물이 내 고시원인가요?</p>
-          <p className="text-xs text-blue-600 mb-3">연락처 인증 후 마이페이지에서 직접 수정·관리할 수 있어요</p>
-          <button onClick={() => { setShowClaimModal(true); setClaimPhone(''); setClaimError('') }}
-            className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm">
-            내 매물로 등록하기
-          </button>
+          <p className="text-xs text-blue-600 mb-3">
+            {(room as any).source === 'public_data'
+              ? '가격·사진·시설 정보를 추가로 등록해 임차인과 매칭받으세요'
+              : '연락처 인증 후 마이페이지에서 직접 수정·관리할 수 있어요'}
+          </p>
+          {(room as any).source === 'public_data' ? (
+            <button onClick={() => {
+              if (!user) { window.location.href = '/api/auth/kakao'; return }
+              router.push(`/register?claim=${room.id}`)
+            }}
+              className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm">
+              내 매물로 등록하기 →
+            </button>
+          ) : user && (
+            <button onClick={() => { setShowClaimModal(true); setClaimPhone(''); setClaimError('') }}
+              className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-sm">
+              내 매물로 등록하기
+            </button>
+          )}
         </div>
       )}
       {claimed && (

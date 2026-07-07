@@ -70,6 +70,9 @@ export interface Room {
   smoking_allowed: boolean
   has_cafeteria: boolean
   no_curfew: boolean
+  source?: string        // 'user' | 'public_data'
+  external_id?: string   // 소상공인 상가정보 bizesId
+  is_claimed?: boolean   // 업주가 등록 완료했는지
 }
 
 export interface User {

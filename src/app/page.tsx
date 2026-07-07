@@ -230,7 +230,7 @@ export default function HomePage() {
 
   async function fetchMapRooms(useBounds = true) {
     let q: any = supabase.from('rooms')
-      .select('id, title, price, lat, lng, type, address')
+      .select('id, title, price, lat, lng, type, address, source, is_claimed')
       .eq('is_active', true)
       .gte('lat', 33).lte('lat', 39)
       .gte('lng', 124).lte('lng', 132)
@@ -355,10 +355,13 @@ export default function HomePage() {
       clustererRef.current.addMarkers(markers)
       markersRef.current = markers
     } else {
-      // 줌 인 상태(level 6 이하): 개별 가격 오버레이
+      // 줌 인 상태(level 6 이하): 개별 마커
       const overlays = valid.map(room => {
         const pos = new window.kakao.maps.LatLng(room.lat, room.lng)
-        const content = `<div onclick="window.location.href='/rooms/${room.id}'" style="background:white;border:1.5px solid #2563eb;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);cursor:pointer;">${room.price}만</div>`
+        const isPublic = (room as any).source === 'public_data' && !(room as any).is_claimed
+        const content = isPublic
+          ? `<div onclick="window.location.href='/rooms/${room.id}'" style="background:rgba(255,255,255,0.9);border:1.5px dashed #9ca3af;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:600;color:#6b7280;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.1);cursor:pointer;">${room.title.length > 8 ? room.title.slice(0, 7) + '…' : room.title}</div>`
+          : `<div onclick="window.location.href='/rooms/${room.id}'" style="background:white;border:1.5px solid #2563eb;border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:#2563eb;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.15);cursor:pointer;">${room.price}만</div>`
         const o = new window.kakao.maps.CustomOverlay({ position: pos, content })
         o.setMap(kakaoMap.current)
         return o
@@ -442,9 +445,9 @@ export default function HomePage() {
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3.5 mb-4 flex items-start gap-2.5">
           <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">BETA</span>
           <div className="flex-1">
-            <p className="text-xs text-blue-800 font-medium leading-relaxed">현재 베타 서비스로 매물을 모으고 있어요.</p>
+            <p className="text-xs text-blue-800 font-medium leading-relaxed">전국 고시원·고시텔·기숙사 약 5,000개 공공데이터 기반 매물 표시 중</p>
             <p className="text-[11px] text-blue-600 mt-0.5">
-              고시원·고시텔 업주라면 <a href="/register" className="underline font-semibold">지금 무료로 등록</a>하고 임차인과 바로 매칭받으세요.
+              업주님이신가요? 지도에서 회색 점선 마커 클릭 → <span className="font-semibold">"내 매물로 등록"</span>으로 가격·사진 추가하고 임차인과 매칭받으세요.
             </p>
           </div>
         </div>

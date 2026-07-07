@@ -63,9 +63,11 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
     { label: '식사', on: room.meals },
   ]
 
+  const isPublicData = (room as any).source === 'public_data' && !(room as any).is_claimed
+
   return (
     <Link href={`/rooms/${room.id}`} className="block">
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md active:scale-[0.99] transition-all cursor-pointer group">
+      <div className={`bg-white rounded-2xl border overflow-hidden hover:shadow-md active:scale-[0.99] transition-all cursor-pointer group ${isPublicData ? 'border-gray-200 border-dashed' : 'border-gray-100'}`}>
         <div className="relative w-full h-40 bg-gray-100 overflow-hidden">
           {room.photos?.[0] ? (
             <img src={room.photos[0]} alt={room.title}
@@ -80,13 +82,19 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
             </div>
           )}
           {/* 좌상단: 상태 뱃지 */}
-          <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            room.has_vacancy === false
-              ? 'bg-gray-800/85 text-white'
-              : freshness ? 'bg-blue-600 text-white' : 'hidden'
-          }`}>
-            {room.has_vacancy === false ? '마감' : freshness}
-          </span>
+          {isPublicData ? (
+            <span className="absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-500/90 text-white">
+              공공데이터
+            </span>
+          ) : (
+            <span className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              room.has_vacancy === false
+                ? 'bg-gray-800/85 text-white'
+                : freshness ? 'bg-blue-600 text-white' : 'hidden'
+            }`}>
+              {room.has_vacancy === false ? '마감' : freshness}
+            </span>
+          )}
           {/* 우상단: 종류 뱃지 */}
           <span className={`absolute top-2 right-10 text-[10px] font-bold px-2 py-0.5 rounded-full badge-${room.type}`}>
             {room.type}
@@ -117,15 +125,19 @@ export default function RoomCard({ room, isFavorited = false, onToggleFavorite }
 
         <div className="p-3 space-y-1.5">
           {/* 가격 라인 (가장 큰 정보) */}
-          <div className="flex items-baseline gap-1 flex-wrap">
-            {room.deposit > 0 && (
-              <span className="text-[11px] text-gray-500">보증 {room.deposit}</span>
-            )}
-            <span className="font-bold text-base text-gray-900 leading-none">{room.price}<span className="text-xs font-medium">만</span></span>
-            {room.management_fee > 0 && (
-              <span className="text-[11px] text-gray-500">+{room.management_fee}만</span>
-            )}
-          </div>
+          {isPublicData ? (
+            <div className="text-[11px] text-gray-500 italic">가격 정보 미등록 · 업주 등록 대기 중</div>
+          ) : (
+            <div className="flex items-baseline gap-1 flex-wrap">
+              {room.deposit > 0 && (
+                <span className="text-[11px] text-gray-500">보증 {room.deposit}</span>
+              )}
+              <span className="font-bold text-base text-gray-900 leading-none">{room.price}<span className="text-xs font-medium">만</span></span>
+              {room.management_fee > 0 && (
+                <span className="text-[11px] text-gray-500">+{room.management_fee}만</span>
+              )}
+            </div>
+          )}
 
           {/* 제목 */}
           <h3 className="font-semibold text-gray-900 text-sm truncate">{room.title}</h3>

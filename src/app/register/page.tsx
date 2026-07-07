@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase, RoomType, GenderType } from '@/lib/supabase'
 
 const TYPES: RoomType[] = ['고시원', '고시텔', '원룸텔', '쉐어하우스', '하숙']
@@ -25,14 +25,17 @@ const AMENITIES = [
 
 declare global { interface Window { kakao: any; daum: any } }
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const claimId = searchParams.get('claim')
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [photos, setPhotos] = useState<File[]>([])
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([])
   const [photoCategories, setPhotoCategories] = useState<string[]>([])
   const [agreed, setAgreed] = useState(false)
+  const [prefilledFromPublic, setPrefilledFromPublic] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -70,6 +73,24 @@ export default function RegisterPage() {
     owner_phone: '',
     amenities: [] as string[],
   })
+
+  // 공공데이터 매물 클레임: 기본정보 pre-fill
+  useEffect(() => {
+    if (!claimId) return
+    supabase.from('rooms').select('*').eq('id', claimId).single().then(({ data }) => {
+      if (!data || data.source !== 'public_data' || data.is_claimed) return
+      setForm(prev => ({
+        ...prev,
+        title: data.title || '',
+        address: data.address || '',
+        address_detail: data.address_detail || '',
+        lat: data.lat || 0,
+        lng: data.lng || 0,
+        type: data.type || '고시원',
+      }))
+      setPrefilledFromPublic(true)
+    })
+  }, [claimId])
 
   function set(key: string, val: any) {
     setForm(prev => ({ ...prev, [key]: val }))
@@ -167,7 +188,7 @@ export default function RegisterPage() {
       const photoUrls = uploads.map(u => u.url)
       const photoCats = uploads.map(u => u.cat)
 
-      const { error } = await supabase.from('rooms').insert({
+      const payload: any = {
         owner_id: user.id,
         title: form.title,
         type: form.type,
@@ -213,11 +234,16 @@ export default function RegisterPage() {
         photo_categories: photoCats,
         is_active: true,
         last_confirmed_at: new Date().toISOString(),
-      })
+      }
+
+      // 공공데이터 매물 클레임: UPDATE, 아니면 INSERT
+      const { error } = claimId
+        ? await supabase.from('rooms').update({ ...payload, source: 'user', is_claimed: true }).eq('id', claimId)
+        : await supabase.from('rooms').insert(payload)
 
       if (error) { alert('등록 중 오류가 발생했어요: ' + error.message); return }
-      alert('매물이 등록되었습니다!')
-      router.push('/')
+      alert(claimId ? '매물 등록이 완료됐어요! 이제 마이페이지에서 관리 가능합니다.' : '매물이 등록되었습니다!')
+      router.push(claimId ? `/rooms/${claimId}` : '/')
     } finally {
       setLoading(false)
     }
@@ -228,8 +254,13 @@ export default function RegisterPage() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-24">
-      <h1 className="text-xl font-bold text-gray-900 mb-1">방 등록하기</h1>
-      <p className="text-sm text-gray-500 mb-6">무료로 매물을 올려보세요</p>
+      <h1 className="text-xl font-bold text-gray-900 mb-1">{claimId ? '매물 관리자 등록' : '방 등록하기'}</h1>
+      <p className="text-sm text-gray-500 mb-6">{claimId ? '기본정보는 자동 채워두었어요. 나머지 정보만 입력해주세요' : '무료로 매물을 올려보세요'}</p>
+      {prefilledFromPublic && (
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3.5 mb-5 text-xs text-blue-800">
+          공공데이터로 등록된 매물의 관리자로 신청 중입니다. 등록 완료 후 즉시 매물 상세 수정·관리 가능해집니다.
+        </div>
+      )}
 
       {/* 스텝 인디케이터 */}
       <div className="flex gap-2 mb-6">
@@ -500,5 +531,13 @@ export default function RegisterPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-24 text-gray-400 text-sm">로딩 중...</div>}>
+      <RegisterContent />
+    </Suspense>
   )
 }
